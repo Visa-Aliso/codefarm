@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <!-- Assets will be added as PNGs are created -->
+        <!-- For now, all sprites are drawn programmatically -->
+    </qresource>
+</RCC>
