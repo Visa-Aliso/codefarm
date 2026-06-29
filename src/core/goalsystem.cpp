@@ -27,7 +27,11 @@ void GoalSystem::addHarvestCount(const QString &crop) {
 }
 
 void GoalSystem::checkAll(int timeElapsed) {
-    Q_UNUSED(timeElapsed)
+    for (auto &g : goals_) {
+        if (g.type == GoalType::TimeLimit && !g.completed) {
+            g.currentValue = timeElapsed;
+        }
+    }
     if (allRequiredCompleted()) {
         emit allGoalsCompleted(starsEarned());
     }

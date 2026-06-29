@@ -18,8 +18,6 @@ class GameEngine : public QObject {
     Q_PROPERTY(State state READ state NOTIFY stateChanged)
     Q_PROPERTY(int tickCount READ tickCount NOTIFY tickExecuted)
     Q_PROPERTY(int timeElapsed READ timeElapsed NOTIFY timeChanged)
-    Q_PROPERTY(float energy READ energy NOTIFY energyChanged)
-    Q_PROPERTY(float maxEnergy READ maxEnergy NOTIFY currentLevelChanged)
     Q_PROPERTY(int droneX READ droneX NOTIFY dronePositionChanged)
     Q_PROPERTY(int droneY READ droneY NOTIFY dronePositionChanged)
     Q_PROPERTY(QVariantList goals READ goals NOTIFY goalsChanged)
@@ -38,8 +36,6 @@ public:
     State state() const { return state_; }
     int tickCount() const { return tickCount_; }
     int timeElapsed() const;
-    float energy() const;
-    float maxEnergy() const;
     int droneX() const;
     int droneY() const;
     QVariantList goals() const;
@@ -64,7 +60,6 @@ signals:
     void stateChanged();
     void tickExecuted(int tickNum);
     void timeChanged();
-    void energyChanged();
     void dronePositionChanged(int x, int y);
     void goalCompleted(int goalIndex);
     void goalsChanged();
@@ -79,12 +74,14 @@ signals:
 
 private slots:
     void onTick();
+    void onUiTimerTick();
 
 private:
     void startElapsedTimer();
     void stopElapsedTimer();
 
     QTimer *tickTimer_ = nullptr;
+    QTimer *uiTimer_ = nullptr;
     QElapsedTimer gameTimer_;
     FarmMap *map_ = nullptr;
     Drone *drone_ = nullptr;
@@ -99,8 +96,7 @@ private:
     int maxTimeSec_ = 0;
     int currentStartX_ = 0;
     int currentStartY_ = 0;
-    float currentBugProbability_ = 0.0f;
-    float currentDroneMaxEnergy_ = 20.0f;
+    float currentBugProbability_ = 0.005f;
     qint64 accumulatedElapsedMs_ = 0;
     bool elapsedTimerRunning_ = false;
     LevelManager *levelManager_ = nullptr;

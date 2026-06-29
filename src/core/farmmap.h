@@ -48,10 +48,13 @@ signals:
     void dimensionsChanged();
 
 private:
+    float sunflowerAdjacency(int x, int y) const;
+
     int gridW_ = 0;
     int gridH_ = 0;
     QVector<Cell> cells_;
     QVector<Cell> presetCells_;
+    QVector<bool> pestZone_;
 };
 
 #endif // FARMMAP_H

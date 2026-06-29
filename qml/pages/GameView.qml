@@ -14,36 +14,78 @@ Rectangle {
         hintWindow.visible = !hintWindow.visible
     }
 
+    function getHintNewContent() {
+        return level.id ? appVm.levelNewContent(level.id) : ({})
+    }
+
     property bool isQuitting: false
 
-    // Background clouds (static, painted once for performance)
-    Canvas {
-        id: bgClouds
-        anchors.fill: parent
-        opacity: 0.12
-        onPaint: {
-            var ctx = getContext("2d")
-            ctx.clearRect(0, 0, width, height)
-            ctx.fillStyle = "#FFFFFF"
-            var clouds = [
-                [120, 70, 80, 30], [320, 50, 60, 22], [550, 90, 100, 35],
-                [780, 40, 70, 25], [1000, 80, 90, 32], [200, 160, 50, 18],
-                [650, 150, 65, 24], [900, 130, 55, 20], [1150, 60, 75, 28]
-            ]
-            for (var i = 0; i < clouds.length; i++) {
-                var cx = clouds[i][0], cy = clouds[i][1], rw = clouds[i][2], rh = clouds[i][3]
-                ctx.beginPath()
-                ctx.ellipse(cx - rw/2, cy - rh/2, rw, rh)
-                ctx.fill()
-                ctx.beginPath()
-                ctx.ellipse(cx - rw*0.3, cy - rh*0.7, rw*0.6, rh*0.8)
-                ctx.fill()
-                ctx.beginPath()
-                ctx.ellipse(cx + rw*0.2, cy - rh*0.5, rw*0.5, rh*0.7)
-                ctx.fill()
+    // ---- Animated background clouds (large, staggered, always visible) ----
+    Repeater {
+        model: [
+            { w: 260, h: 90,  y: 15,  speed: 90000,  stagger: 0    },
+            { w: 200, h: 70,  y: 50,  speed: 110000, stagger: 0.15 },
+            { w: 300, h: 105, y: 90,  speed: 75000,  stagger: 0.3  },
+            { w: 180, h: 65,  y: 130, speed: 120000, stagger: 0.45 },
+            { w: 240, h: 85,  y: 35,  speed: 85000,  stagger: 0.6  },
+            { w: 220, h: 78,  y: 70,  speed: 95000,  stagger: 0.75 },
+            { w: 280, h: 98,  y: 110, speed: 80000,  stagger: 0.88 },
+            { w: 170, h: 60,  y: 150, speed: 130000, stagger: 0.05 },
+            { w: 250, h: 88,  y: 0,   speed: 100000, stagger: 0.35 },
+            { w: 190, h: 68,  y: 140, speed: 115000, stagger: 0.55 },
+            { w: 230, h: 82,  y: 55,  speed: 105000, stagger: 0.9  },
+            { w: 160, h: 56,  y: 120, speed: 125000, stagger: 0.2  }
+        ]
+        delegate: Item {
+            y: modelData.y
+            width: modelData.w
+            height: modelData.h
+            opacity: 0.1
+            z: 0
+
+            Canvas {
+                anchors.fill: parent
+                onPaint: {
+                    var ctx = getContext("2d")
+                    ctx.clearRect(0, 0, width, height)
+                    ctx.fillStyle = "#FFFFFF"
+                    var rw = modelData.w, rh = modelData.h
+                    // Main body
+                    ctx.beginPath()
+                    ctx.ellipse(rw*0.05, rh*0.4, rw*0.45, rh*0.45, 0, 0, Math.PI*2)
+                    ctx.fill()
+                    // Top bump
+                    ctx.beginPath()
+                    ctx.ellipse(rw*0.2, rh*0.15, rw*0.3, rh*0.5, 0, 0, Math.PI*2)
+                    ctx.fill()
+                    // Side bump
+                    ctx.beginPath()
+                    ctx.ellipse(rw*0.45, rh*0.25, rw*0.28, rh*0.4, 0, 0, Math.PI*2)
+                    ctx.fill()
+                    // Extra small bump
+                    ctx.beginPath()
+                    ctx.ellipse(rw*0.65, rh*0.35, rw*0.2, rh*0.35, 0, 0, Math.PI*2)
+                    ctx.fill()
+                }
+                Component.onCompleted: requestPaint()
+            }
+
+            // First loop: stagger position → right edge (partial)
+            // Subsequent loops: left edge → right edge (full)
+            SequentialAnimation on x {
+                loops: Animation.Infinite
+                NumberAnimation {
+                    from: -(modelData.w + 40) + modelData.stagger * (root.width + modelData.w + 80)
+                    to: root.width > 0 ? root.width + 40 : 1400
+                    duration: (1 - modelData.stagger) * modelData.speed
+                }
+                NumberAnimation {
+                    from: -(modelData.w + 40)
+                    to: root.width > 0 ? root.width + 40 : 1400
+                    duration: modelData.speed
+                }
             }
         }
-        Component.onCompleted: requestPaint()
     }
 
     // Top-left: back button (green square style)
@@ -61,20 +103,23 @@ Rectangle {
         }
     }
 
-    // Top-center: resource bar
-    ResourceBar {
-        id: resourceBar
+    // Top-center: elapsed timer
+    Text {
         anchors.top: parent.top
         anchors.topMargin: 10
         anchors.horizontalCenter: parent.horizontalCenter
-        width: Math.min(parent.width * 0.45, 520)
         z: 100
-        timeElapsed: appVm.timeElapsed
-        tickCount: appVm.tickCount
-        energy: appVm.energy
-        maxEnergy: appVm.maxEnergy
-        state: appVm.state
-        levelName: level.name || ""
+        text: {
+            var sec = appVm.timeElapsed
+            var m = Math.floor(sec / 60)
+            var s = sec % 60
+            return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s
+        }
+        color: Theme.textLight
+        font.family: "Fredoka One"
+        font.pixelSize: 28
+        style: Text.Raised
+        styleColor: "#30000000"
     }
 
 
@@ -89,77 +134,6 @@ Rectangle {
         mapModel: farmMap
         droneX: appVm.droneX
         droneY: appVm.droneY
-    }
-
-    // Drone sprite (positioned relative to map center)
-    Item {
-        id: droneContainer
-        anchors.centerIn: farmMapView
-        width: 0; height: 0
-        z: 50
-
-        Canvas {
-            id: droneCanvas
-            width: 40; height: 40
-            property real floatY: 0
-            SequentialAnimation on floatY {
-                loops: Animation.Infinite
-                NumberAnimation { from: 0; to: -6; duration: 1200; easing.type: Easing.InOutSine }
-                NumberAnimation { from: -6; to: 0; duration: 1200; easing.type: Easing.InOutSine }
-            }
-
-            x: {
-                var ox = farmMap.gridHeight * farmMapView.tileW / 2
-                var sx = ox + (appVm.droneX - appVm.droneY) * farmMapView.tileW / 2
-                return sx - width/2
-            }
-            y: {
-                var oy = 16
-                var sy = oy + (appVm.droneX + appVm.droneY) * farmMapView.tileH / 2
-                return sy - height + floatY - 10
-            }
-
-            Behavior on x { SmoothedAnimation { velocity: 250 } }
-            Behavior on y { SmoothedAnimation { velocity: 250 } }
-
-            onPaint: {
-                var ctx = getContext("2d")
-                ctx.clearRect(0, 0, width, height)
-                var cx = width/2, cy = height/2
-
-                ctx.fillStyle = "#E0E0E0"
-                ctx.beginPath()
-                ctx.roundedRect(cx-10, cy-3, 20, 12, 4, 4)
-                ctx.fill()
-
-                ctx.strokeStyle = "#777"
-                ctx.lineWidth = 2
-                ctx.beginPath()
-                ctx.moveTo(cx-8, cy); ctx.lineTo(cx-18, cy-6)
-                ctx.moveTo(cx+8, cy); ctx.lineTo(cx+18, cy-6)
-                ctx.stroke()
-
-                ctx.fillStyle = "rgba(76,175,80,0.4)"
-                ctx.beginPath()
-                ctx.arc(cx-18, cy-6, 7, 0, Math.PI*2)
-                ctx.arc(cx+18, cy-6, 7, 0, Math.PI*2)
-                ctx.fill()
-
-                ctx.fillStyle = "#4CAF50"
-                ctx.beginPath()
-                ctx.arc(cx, cy+4, 2.5, 0, Math.PI*2)
-                ctx.fill()
-            }
-            Component.onCompleted: requestPaint()
-        }
-
-        // Drone shadow
-        Rectangle {
-            width: 16; height: 6; radius: 3
-            color: Qt.rgba(0,0,0,0.15)
-            x: droneCanvas.x + droneCanvas.width/2 - 8
-            y: droneCanvas.y + droneCanvas.height + 4
-        }
     }
 
     // Goal overlay (bottom-left, draggable)
@@ -290,47 +264,164 @@ Rectangle {
                         width: parent.width; wrapMode: Text.WordWrap
                     }
 
-                    Rectangle { width: parent.width; height: 1; color: Theme.borderDim }
-
-                    // Function documentation
-                    Text { text: "可用函数："; color: Theme.textDim; font.family: Theme.fontCode; font.pixelSize: 11 }
-
+                    // Goals section
                     Column {
-                        width: parent.width
-                        spacing: 4
+                        width: parent.width; spacing: 4
+                        visible: level.goals && level.goals.length > 0
+                        Text { text: "通关目标"; color: Theme.btnGreen; font.family: Theme.fontUI; font.pixelSize: 12; font.weight: Font.Bold }
                         Repeater {
-                            model: getFunctionDocs()
+                            model: level.goals || []
                             Rectangle {
-                                width: parent.width; height: funcDocCol.height + 8
-                                radius: 4; color: Qt.rgba(1,1,1,0.04)
-                                Column {
-                                    id: funcDocCol
-                                    anchors.left: parent.left; anchors.right: parent.right; anchors.margins: 6
+                                width: parent.width; height: goalHintRow.height + 10
+                                radius: 4; color: Qt.rgba(0,0,0,0.2)
+                                Row {
+                                    id: goalHintRow
+                                    anchors.left: parent.left; anchors.right: parent.right
                                     anchors.verticalCenter: parent.verticalCenter
-                                    Text { text: modelData.name; color: Theme.statusRunning; font.family: Theme.fontCode; font.pixelSize: 11; font.weight: Font.Bold }
-                                    Text { text: modelData.desc; color: Theme.textDim; font.family: Theme.fontUI; font.pixelSize: 10; width: parent.width; wrapMode: Text.WordWrap }
+                                    anchors.margins: 6
+                                    spacing: 6
+                                    Text {
+                                        text: {
+                                            var tier = modelData.starTier || 1
+                                            if (tier === 1) return "★"
+                                            if (tier === 2) return "★★"
+                                            return "★★★"
+                                        }
+                                        color: Theme.starGold; font.pixelSize: 10
+                                    }
+                                    Text {
+                                        text: modelData.description || ""
+                                        color: Theme.textDim; font.family: Theme.fontUI; font.pixelSize: 11
+                                        width: parent.width - 50; elide: Text.ElideRight
+                                    }
                                 }
                             }
                         }
                     }
 
-                    Rectangle { width: parent.width; height: 1; color: Theme.borderDim }
+                    // New functions — styled card
+                    Column {
+                        width: parent.width; spacing: 6
+                        visible: getHintNewContent().newFunctions && getHintNewContent().newFunctions.length > 0
+                        Text { text: "本关新函数"; color: Theme.btnGreen; font.family: Theme.fontUI; font.pixelSize: 12; font.weight: Font.Bold }
+                        Repeater {
+                            model: getHintNewContent().newFunctions || []
+                            Rectangle {
+                                width: parent.width; height: nfCol.height + 12
+                                radius: 6; color: Qt.rgba(0,0,0,0.25)
+                                border.width: 1; border.color: Qt.rgba(1,1,1,0.06)
+                                Column {
+                                    id: nfCol
+                                    anchors.left: parent.left; anchors.right: parent.right; anchors.margins: 8
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 2
+                                    Text {
+                                        text: {
+                                            var docs = getFunctionDocs()
+                                            for (var i = 0; i < docs.length; i++) {
+                                                if (docs[i].funcName === modelData) return docs[i].name
+                                            }
+                                            return modelData + "()"
+                                        }
+                                        color: Theme.statusRunning; font.family: Theme.fontCode; font.pixelSize: 12; font.weight: Font.Bold
+                                    }
+                                    Text {
+                                        text: {
+                                            var docs = getFunctionDocs()
+                                            for (var i = 0; i < docs.length; i++) {
+                                                if (docs[i].funcName === modelData) return docs[i].desc
+                                            }
+                                            return ""
+                                        }
+                                        color: Theme.textDim; font.family: Theme.fontUI; font.pixelSize: 10
+                                        width: parent.width; wrapMode: Text.WordWrap
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // New syntax — styled card
+                    Column {
+                        width: parent.width; spacing: 6
+                        visible: getHintNewContent().newSyntax && getHintNewContent().newSyntax.length > 0
+                        Text { text: "本关新语法"; color: Theme.btnGreen; font.family: Theme.fontUI; font.pixelSize: 12; font.weight: Font.Bold }
+                        Rectangle {
+                            width: parent.width; height: syntaxCol.height + 16
+                            radius: 6; color: Qt.rgba(0,0,0,0.25)
+                            border.width: 1; border.color: Qt.rgba(1,1,1,0.06)
+                            Column {
+                                id: syntaxCol
+                                anchors.left: parent.left; anchors.right: parent.right; anchors.margins: 8
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 4
+                                Repeater {
+                                    model: getHintNewContent().newSyntax || []
+                                    Text {
+                                        text: modelData
+                                        color: Theme.statusRunning; font.family: Theme.fontCode; font.pixelSize: 12; font.weight: Font.Bold
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // New crops — styled card
+                    Column {
+                        width: parent.width; spacing: 6
+                        visible: getHintNewContent().newCrops && getHintNewContent().newCrops.length > 0
+                        Text { text: "本关新作物"; color: Theme.btnGreen; font.family: Theme.fontUI; font.pixelSize: 12; font.weight: Font.Bold }
+                        Rectangle {
+                            width: parent.width; height: cropCol.height + 16
+                            radius: 6; color: Qt.rgba(0,0,0,0.25)
+                            border.width: 1; border.color: Qt.rgba(1,1,1,0.06)
+                            Column {
+                                id: cropCol
+                                anchors.left: parent.left; anchors.right: parent.right; anchors.margins: 8
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 4
+                                Repeater {
+                                    model: getHintNewContent().newCrops || []
+                                    Text {
+                                        text: modelData
+                                        color: Theme.statusRunning; font.family: Theme.fontCode; font.pixelSize: 12; font.weight: Font.Bold
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Rectangle { width: parent.width; height: 1; color: Theme.borderDim; visible: getHintNewContent().newFunctions && getHintNewContent().newFunctions.length > 0 || getHintNewContent().newSyntax && getHintNewContent().newSyntax.length > 0 || getHintNewContent().newCrops && getHintNewContent().newCrops.length > 0 }
 
                     // Answer section
-                    Text { text: "参考答案："; color: Theme.textDim; font.family: Theme.fontCode; font.pixelSize: 11 }
+                    Row {
+                        spacing: 8
+                        Text { text: "参考答案："; color: Theme.textDim; font.family: Theme.fontCode; font.pixelSize: 11; anchors.verticalCenter: parent.verticalCenter }
+                        Rectangle {
+                            width: copyLabel.implicitWidth + 12; height: 20; radius: 4
+                            color: copyMa.containsMouse ? Theme.btnGreenHover : Theme.btnGreen
+                            anchors.verticalCenter: parent.verticalCenter
+                            Text { id: copyLabel; anchors.centerIn: parent; text: "复制代码"; color: "white"; font.pixelSize: 10 }
+                            MouseArea { id: copyMa; anchors.fill: parent; hoverEnabled: true
+                                onClicked: { answerEdit.selectAll(); answerEdit.copy(); answerEdit.deselect() }
+                            }
+                        }
+                    }
                     Rectangle {
                         width: parent.width
-                        height: answerText.height + 12
+                        height: Math.max(answerEdit.contentHeight + 16, 40)
                         radius: 4; color: Qt.rgba(0,0,0,0.3)
-                        Text {
-                            id: answerText
+                        TextEdit {
+                            id: answerEdit
                             anchors.left: parent.left; anchors.right: parent.right; anchors.margins: 8
                             anchors.verticalCenter: parent.verticalCenter
                             text: level.tutorialCode || ""
                             color: Theme.textLight
                             font.family: Theme.fontCode; font.pixelSize: 11
-                            lineHeight: 1.4
-                            wrapMode: Text.WordWrap
+                            wrapMode: TextEdit.WordWrap
+                            readOnly: true
+                            selectByMouse: true
+                            selectionColor: "#3A5A8C"
                         }
                     }
 
@@ -342,21 +433,20 @@ Rectangle {
 
     function getFunctionDocs() {
         var docs = {
-            "move": {name: "move(方向)", desc: "移动无人机。方向: \"up\"/\"down\"/\"left\"/\"right\""},
-            "harvest": {name: "harvest()", desc: "收割当前格成熟的作物"},
-            "till": {name: "till()", desc: "开垦当前格土地"},
-            "plant": {name: "plant(作物)", desc: "种植作物: \"wheat\"/\"carrot\"/\"tomato\"/\"corn\"/\"sunflower\""},
-            "water": {name: "water()", desc: "给当前格浇水，促进作物生长"},
-            "fertilize": {name: "fertilize()", desc: "施肥，加速生长1.5倍"},
-            "spray": {name: "spray()", desc: "喷洒农药，清除虫害"},
-            "debug": {name: "debug()", desc: "修复当前格的虫害"},
-            "wait": {name: "wait()", desc: "等待一个tick，不执行操作"},
-            "get_pos": {name: "get_pos()", desc: "返回无人机当前坐标 (x, y)"},
-            "get_current": {name: "get_current()", desc: "返回当前格信息"},
-            "get_map_size": {name: "get_map_size()", desc: "返回地图尺寸 (w, h)"},
-            "get_energy": {name: "get_energy()", desc: "返回剩余能量"},
-            "get_tick": {name: "get_tick()", desc: "返回当前tick数"},
-            "get_goals": {name: "get_goals()", desc: "返回关卡目标列表"}
+            "move": {funcName: "move", name: "move(方向)", desc: "移动无人机一格。方向: \"up\"/\"down\"/\"left\"/\"right\"。不能移出地图，不能移动到岩石格子。"},
+            "harvest": {funcName: "harvest", name: "harvest()", desc: "收割当前格已成熟的作物（进度=1.0且无虫害）。向日葵不可收割，它会持续提供阳光加成。"},
+            "till": {funcName: "till", name: "till()", desc: "将当前空地开垦为可种植状态。当前格必须为空地，岩石格子无法犁地。"},
+            "plant": {funcName: "plant", name: "plant(作物)", desc: "在已犁地上种植。作物: \"wheat\"/\"carrot\"/\"tomato\"/\"corn\"/\"sunflower\"。向日葵不可收割但提供阳光加成。"},
+            "water": {funcName: "water", name: "water()", desc: "浇水+0.35水分（最高1.0）。可多次叠加。注意：胡萝卜和向日葵水>0.85会过涝受伤！"},
+            "fertilize": {funcName: "fertilize", name: "fertilize()", desc: "施肥加速生长。水分≥0.6时1.8倍，否则1.5倍，持续12 tick。"},
+            "spray": {funcName: "spray", name: "spray()", desc: "清除当前格虫害，并获得12 tick虫害免疫。"},
+            "wait": {funcName: "wait", name: "wait()", desc: "等待一个tick（约0.5秒），不做任何操作。"},
+            "get_pos": {funcName: "get_pos", name: "get_pos()", desc: "返回坐标元组 (x, y)。x=列，y=行。"},
+            "get_current": {funcName: "get_current", name: "get_current()", desc: "返回格子字典: state, crop, water, hasBug, progress, fertilized。state含\"rock\"。"},
+            "get_map_size": {funcName: "get_map_size", name: "get_map_size()", desc: "返回地图尺寸元组 (w, h)。"},
+            "get_tick": {funcName: "get_tick", name: "get_tick()", desc: "返回当前已执行的tick数（整数）。"},
+            "get_goals": {funcName: "get_goals", name: "get_goals()", desc: "返回目标列表，每项含: description, current, target, completed, starTier。"},
+            "debug": {funcName: "debug", name: "debug()", desc: "在控制台打印当前格详细信息，同时返回格子信息字典。"}
         }
         var result = []
         var apis = appVm.allowedApis

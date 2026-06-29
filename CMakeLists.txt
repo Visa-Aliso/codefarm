@@ -64,6 +64,21 @@ qt_add_qml_module(codefarm
         resources/fonts/JetBrainsMono-Regular.ttf
         resources/fonts/fredoka-one.one-regular.ttf
         resources/pictures/jackstraw.png
+        resources/sprites/crops/wheat_small.png
+        resources/sprites/crops/wheat_growing.png
+        resources/sprites/crops/wheat_mature.png
+        resources/sprites/crops/carrot_small.png
+        resources/sprites/crops/carrot_growing.png
+        resources/sprites/crops/carrot_mature.png
+        resources/sprites/crops/tomato_small.png
+        resources/sprites/crops/tomato_growing.png
+        resources/sprites/crops/tomato_mature.png
+        resources/sprites/crops/corn_small.png
+        resources/sprites/crops/corn_growing.png
+        resources/sprites/crops/corn_mature.png
+        resources/sprites/crops/sunflower_small.png
+        resources/sprites/crops/sunflower_growing.png
+        resources/sprites/crops/sunflower_mature.png
 )
 
 target_include_directories(codefarm PRIVATE src)
@@ -73,6 +88,12 @@ target_link_libraries(codefarm PRIVATE
     Qt6::QuickControls2
     Qt6::Svg
     Qt6::Multimedia
+)
+
+# Delete save.json after each build so game starts fresh during development
+add_custom_command(TARGET codefarm POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E remove "$ENV{HOME}/.codefarm/save.json"
+    COMMENT "Clearing save data for fresh start"
 )
 
 if(Python3_FOUND)

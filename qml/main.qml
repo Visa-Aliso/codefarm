@@ -46,7 +46,7 @@ Window {
         Rectangle {
             width: 30; height: 30; radius: 6
             color: helpBtnMa.containsMouse ? Theme.btnGreenHover : Theme.btnGreen
-            visible: navigator.depth > 2
+            visible: navigator.depth >= 2
             Text { anchors.centerIn: parent; text: "?"; color: "white"; font.pixelSize: 14; font.weight: Font.Bold }
             MouseArea { id: helpBtnMa; anchors.fill: parent; hoverEnabled: true
                 onClicked: {

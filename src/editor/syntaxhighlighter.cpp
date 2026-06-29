@@ -1,6 +1,5 @@
 #include "syntaxhighlighter.h"
 #include <QQuickTextDocument>
-#include <QRegularExpression>
 
 SyntaxHighlighter::SyntaxHighlighter(QObject *parent)
     : QSyntaxHighlighter(parent)
@@ -17,6 +16,17 @@ SyntaxHighlighter::SyntaxHighlighter(QObject *parent)
 
     disabledFormat_.setForeground(QColor("#667A6D"));
     disabledFormat_.setFontStrikeOut(true);
+
+    // Pre-compile regex patterns
+    strRe_.setPattern(R"(("[^"]*"|'[^']*'))");
+
+    static const QStringList keywords = {"if","else","for","while","def","return","break","continue","in","not","and","or","True","False","None","range"};
+    for (const auto &kw : keywords)
+        kwRes_.append(QRegularExpression("\\b" + kw + "\\b"));
+
+    static const QStringList allFuncs = {"move","till","plant","harvest","water","fertilize","spray","wait","debug","get_pos","get_map_size","get_current","get_goals","get_tick"};
+    for (const auto &fn : allFuncs)
+        fnRes_.append(QRegularExpression("\\b" + fn + "\\b"));
 }
 
 void SyntaxHighlighter::setQuickDocument(QQuickTextDocument *doc) {
@@ -41,33 +51,29 @@ void SyntaxHighlighter::highlightBlock(const QString &text) {
     if (commentIdx >= 0)
         setFormat(commentIdx, text.length() - commentIdx, commentFormat_);
 
-    // Strings
-    static QRegularExpression strRe(R"(("[^"]*"|'[^']*'))");
-    auto it = strRe.globalMatch(text);
-    while (it.hasNext()) {
-        auto m = it.next();
+    // Strings (pre-compiled)
+    auto strIt = strRe_.globalMatch(text);
+    while (strIt.hasNext()) {
+        auto m = strIt.next();
         setFormat(m.capturedStart(), m.capturedLength(), stringFormat_);
     }
 
-    // Keywords
-    static QStringList keywords = {"if","else","for","while","def","return","break","continue","in","not","and","or","True","False","None","range"};
-    for (const auto &kw : keywords) {
-        QRegularExpression kwRe("\\b" + kw + "\\b");
-        auto kwIt = kwRe.globalMatch(text);
+    // Keywords (pre-compiled)
+    for (const auto &re : kwRes_) {
+        auto kwIt = re.globalMatch(text);
         while (kwIt.hasNext()) {
             auto m = kwIt.next();
             setFormat(m.capturedStart(), m.capturedLength(), keywordFormat_);
         }
     }
 
-    // API functions
-    static QStringList allFuncs = {"move","till","plant","harvest","water","fertilize","spray","wait","debug","get_pos","get_map_size","get_current","get_goals","get_energy","get_tick"};
-    for (const auto &fn : allFuncs) {
-        QRegularExpression fnRe("\\b" + fn + "\\b");
-        auto fnIt = fnRe.globalMatch(text);
+    // API functions (pre-compiled)
+    static const QStringList allFuncNames = {"move","till","plant","harvest","water","fertilize","spray","wait","debug","get_pos","get_map_size","get_current","get_goals","get_tick"};
+    for (int i = 0; i < fnRes_.size(); ++i) {
+        auto fnIt = fnRes_[i].globalMatch(text);
         while (fnIt.hasNext()) {
             auto m = fnIt.next();
-            if (allowedFunctions_.isEmpty() || allowedFunctions_.contains(fn))
+            if (allowedFunctions_.isEmpty() || allowedFunctions_.contains(allFuncNames[i]))
                 setFormat(m.capturedStart(), m.capturedLength(), apiFuncFormat_);
             else
                 setFormat(m.capturedStart(), m.capturedLength(), disabledFormat_);

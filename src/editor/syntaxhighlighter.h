@@ -4,6 +4,8 @@
 #include <QSyntaxHighlighter>
 #include <QQuickTextDocument>
 #include <QSet>
+#include <QRegularExpression>
+#include <QVector>
 
 class SyntaxHighlighter : public QSyntaxHighlighter {
     Q_OBJECT
@@ -30,6 +32,10 @@ private:
     QTextCharFormat stringFormat_;
     QTextCharFormat commentFormat_;
     QTextCharFormat disabledFormat_;
+
+    QRegularExpression strRe_;
+    QVector<QRegularExpression> kwRes_;
+    QVector<QRegularExpression> fnRes_;
 };
 
 #endif // SYNTAXHIGHLIGHTER_H

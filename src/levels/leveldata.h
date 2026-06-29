@@ -36,7 +36,6 @@ struct LevelConfig {
     QSet<QString> allowedSyntax;
     QSet<QString> allowedCrops;
     QString tutorialCode;
-    float droneMaxEnergy = 20.0f;
     float bugProbability = 0.005f;
 };
 

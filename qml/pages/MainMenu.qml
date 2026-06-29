@@ -52,13 +52,7 @@ Rectangle {
             style: Text.Raised
             styleColor: "#30000000"
         }
-        Text {
-            text: "智能果园 · 用代码种出未来"
-            color: Theme.textDim
-            font.family: Theme.fontUI
-            font.pixelSize: 18
-            bottomPadding: 30
-        }
+        Item { width: 1; height: 30 }
 
         Column {
             leftPadding: 80
@@ -100,7 +94,7 @@ Rectangle {
         anchors.bottom: parent.bottom
         anchors.right: parent.right
         anchors.margins: 16
-        text: "v0.1.0"
+        text: "v0.2.0"
         color: Theme.textMuted
         font.family: Theme.fontCode
         font.pixelSize: 11

@@ -16,6 +16,7 @@ public:
     explicit LevelManager(QObject *parent = nullptr);
 
     Q_INVOKABLE QVariantMap getLevel(int id) const;
+    Q_INVOKABLE QVariantMap getLevelNewContent(int id) const;
     Q_INVOKABLE bool isUnlocked(int id) const;
     Q_INVOKABLE int getStars(int id) const;
     Q_INVOKABLE int getBestTime(int id) const;

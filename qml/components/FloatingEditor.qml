@@ -160,7 +160,8 @@ Item {
                     color: Theme.textLight
                     selectionColor: "#3A5A8C"
                     font.family: Theme.fontCode
-                    font.pixelSize: 13
+                    font.pixelSize: 14
+                    font.letterSpacing: 1.5
                     padding: 8
                     background: null
                     wrapMode: TextEdit.NoWrap

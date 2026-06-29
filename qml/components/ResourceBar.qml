@@ -9,8 +9,6 @@ Rectangle {
 
     property int timeElapsed: 0
     property int tickCount: 0
-    property real energy: 0
-    property real maxEnergy: 20
     property int state: 0
     property string levelName: ""
 
@@ -39,19 +37,6 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 text: formatTime(root.timeElapsed)
                 color: Theme.textLight
-                font.family: Theme.fontCode
-                font.pixelSize: 13
-            }
-        }
-
-        Row {
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 6
-            Text { text: "⚡"; font.pixelSize: 14; anchors.verticalCenter: parent.verticalCenter; color: Theme.statusPaused }
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: Math.round(root.energy) + "/" + Math.round(root.maxEnergy)
-                color: root.energy < 5 ? Theme.statusError : Theme.textLight
                 font.family: Theme.fontCode
                 font.pixelSize: 13
             }

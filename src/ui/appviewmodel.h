@@ -23,8 +23,6 @@ class AppViewModel : public QObject {
     Q_PROPERTY(int state READ state NOTIFY runtimeChanged)
     Q_PROPERTY(int tickCount READ tickCount NOTIFY runtimeChanged)
     Q_PROPERTY(int timeElapsed READ timeElapsed NOTIFY runtimeChanged)
-    Q_PROPERTY(float energy READ energy NOTIFY runtimeChanged)
-    Q_PROPERTY(float maxEnergy READ maxEnergy NOTIFY runtimeChanged)
     Q_PROPERTY(int droneX READ droneX NOTIFY runtimeChanged)
     Q_PROPERTY(int droneY READ droneY NOTIFY runtimeChanged)
     Q_PROPERTY(int totalStars READ totalStars NOTIFY levelsChanged)
@@ -50,8 +48,6 @@ public:
     int state() const;
     int tickCount() const;
     int timeElapsed() const;
-    float energy() const;
-    float maxEnergy() const;
     int droneX() const;
     int droneY() const;
     int totalStars() const;
@@ -71,6 +67,7 @@ public:
     Q_INVOKABLE int nextUnlockedLevel() const;
     Q_INVOKABLE void resetUiPreferences();
     Q_INVOKABLE QVariantMap level(int levelId) const;
+    Q_INVOKABLE QVariantMap levelNewContent(int levelId) const;
     Q_INVOKABLE QString failureHint(const QString &reason) const;
     Q_INVOKABLE void resetAllProgress();
 

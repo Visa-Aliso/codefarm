@@ -3,7 +3,7 @@
 
 #include <QString>
 
-enum class CellState { Empty, Tilled, Planted, Mature, Bug };
+enum class CellState { Empty, Tilled, Planted, Mature, Bug, Rock };
 enum class CropType { None, Wheat, Carrot, Tomato, Corn, Sunflower };
 
 struct Cell {
@@ -25,6 +25,12 @@ struct Cell {
     static CropType cropFromString(const QString &s);
     int growthTicks() const;
     float waterThreshold() const;
+    bool isHarvestable() const;
+    bool isDroughtSensitive() const;
+    bool isOverwaterSensitive() const;
+    float adjacencyBonus() const;
+    float droughtPenalty() const;
+    float overwaterPenalty() const;
 };
 
 #endif // CELL_H

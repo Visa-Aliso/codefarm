@@ -17,15 +17,37 @@ QtObject {
     readonly property color btnSecondary: "#4A5568"
     readonly property color btnSecondaryHover: "#5A6578"
 
-    // Farm tiles
+    // Farm block colors (top-down 3D block style)
+    readonly property color blockGrassTop: "#7DA84E"
+    readonly property color blockGrassFront: "#6B8C3A"
+    readonly property color blockGrassSide: "#5A7A30"
+    readonly property color blockSoilTop: "#A07848"
+    readonly property color blockSoilFront: "#8B6538"
+    readonly property color blockSoilSide: "#6B4528"
+    readonly property color blockWetSoilTop: "#7A5830"
+    readonly property color blockRockTop: "#8A8A8A"
+    readonly property color blockRockFront: "#6A6A6A"
+    readonly property color blockRockSide: "#5A5A5A"
+    readonly property color blockShadow: "#20000000"
+
+    // Hedge / border bushes
+    readonly property color hedgeBody: "#4A7A25"
+    readonly property color hedgeLight: "#6AA840"
+    readonly property color hedgeDark: "#3A6218"
+    readonly property color hedgeTrunk: "#8B6B42"
+
+    // Drone
+    readonly property color droneBody: "#E8862A"
+    readonly property color droneHighlight: "#F0A040"
+    readonly property color droneArm: "#5A5A5A"
+    readonly property color droneRotor: "#505050"
+    readonly property color droneLed: "#4CAF50"
+
+    // Legacy tile colors (kept for MiniMap compatibility)
     readonly property color tileEmpty: "#C8B078"
-    readonly property color tileEmptySide: "#A89058"
     readonly property color tileTilled: "#8B5E3C"
-    readonly property color tileTilledSide: "#6B4020"
     readonly property color tilePlanted: "#7AB356"
-    readonly property color tilePlantedSide: "#5A9336"
     readonly property color tileMature: "#4A8C3A"
-    readonly property color tileMatureSide: "#2A6C1A"
     readonly property color tileWater: "#5AAFCF"
     readonly property color tileBug: "#CF5A5A"
     readonly property color tileFertilized: "#D4A840"

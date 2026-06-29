@@ -46,8 +46,8 @@ Rectangle {
                         width: parent.width
 
                         Text {
-                            text: modelData.completed ? "✓" : "★"
-                            color: modelData.completed ? Theme.statusRunning : Theme.starGold
+                            text: modelData.completed ? "✓" : "○"
+                            color: modelData.completed ? Theme.statusRunning : Theme.textDim
                             font.pixelSize: 12
                         }
                         Text {
@@ -63,9 +63,9 @@ Rectangle {
                     Rectangle {
                         id: progressBar
                         width: parent.width
-                        height: 3
+                        height: 4
                         radius: 2
-                        color: "#40FFFFFF"
+                        color: "#30FFFFFF"
 
                         Rectangle {
                             width: {

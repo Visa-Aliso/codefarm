@@ -32,7 +32,6 @@ AppViewModel::AppViewModel(GameEngine *engine,
     connect(engine_, &GameEngine::stateChanged, this, &AppViewModel::runtimeChanged);
     connect(engine_, &GameEngine::tickExecuted, this, [this](int) { emit runtimeChanged(); });
     connect(engine_, &GameEngine::timeChanged, this, &AppViewModel::runtimeChanged);
-    connect(engine_, &GameEngine::energyChanged, this, &AppViewModel::runtimeChanged);
     connect(engine_, &GameEngine::dronePositionChanged, this, [this](int, int) { emit runtimeChanged(); });
     connect(engine_, &GameEngine::logMessage, this, [this](const QString &text, const QString &) {
         setConsoleLine(text);
@@ -97,8 +96,6 @@ int AppViewModel::state() const {
 
 int AppViewModel::tickCount() const { return engine_ ? engine_->tickCount() : 0; }
 int AppViewModel::timeElapsed() const { return engine_ ? engine_->timeElapsed() : 0; }
-float AppViewModel::energy() const { return engine_ ? engine_->energy() : 0.0f; }
-float AppViewModel::maxEnergy() const { return engine_ ? engine_->maxEnergy() : 1.0f; }
 int AppViewModel::droneX() const { return engine_ ? engine_->droneX() : 0; }
 int AppViewModel::droneY() const { return engine_ ? engine_->droneY() : 0; }
 int AppViewModel::totalStars() const { return levelManager_ ? levelManager_->totalStars() : 0; }
@@ -213,6 +210,13 @@ QVariantMap AppViewModel::level(int levelId) const {
     item.insert(QStringLiteral("bestTime"), levelManager_->getBestTime(levelId));
     item.insert(QStringLiteral("clearCount"), levelManager_->getClearCount(levelId));
     return item;
+}
+
+QVariantMap AppViewModel::levelNewContent(int levelId) const {
+    if (!levelManager_ || levelId <= 0) {
+        return {};
+    }
+    return levelManager_->getLevelNewContent(levelId);
 }
 
 QString AppViewModel::failureHint(const QString &reason) const {

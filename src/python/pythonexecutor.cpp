@@ -40,25 +40,10 @@ void ensurePythonRuntime() {
 }
 
 std::pair<QString, int> extractPythonError(const py::error_already_set &err) {
-    QString message = QString::fromStdString(err.what());
-    int line = 0;
-
-    try {
-        const QString typeName = QString::fromStdString(py::str(err.type().attr("__name__")));
-        const QString valueText = QString::fromStdString(py::str(err.value()));
-        message = valueText.isEmpty() ? typeName
-                                      : QStringLiteral("%1: %2").arg(typeName, valueText);
-
-        py::module_ traceback = py::module_::import("traceback");
-        py::list frames = traceback.attr("extract_tb")(err.trace());
-        if (!frames.empty()) {
-            py::object frame = frames[py::int_(py::len(frames) - 1)];
-            line = py::int_(frame.attr("lineno"));
-        }
-    } catch (...) {
-    }
-
-    return {message, line};
+    // Only use err.what() — a pure C++ call that never touches Python objects.
+    // Accessing err.type()/err.value()/err.trace() can SIGSEGV when pybind11
+    // converts a C++ exception to a Python exception (invalid object state).
+    return {QString::fromStdString(err.what()), 0};
 }
 
 py::object toPythonObject(const QVariant &value) {
@@ -151,6 +136,13 @@ void PythonExecutor::loadScript(const QString &code) {
     currentScript_ = code;
 }
 
+static QString normalizeIndentation(const QString &code) {
+    // Replace tabs with 4 spaces to avoid Python TabError on mixed indentation
+    QString result = code;
+    result.replace(QStringLiteral("\t"), QStringLiteral("    "));
+    return result;
+}
+
 bool PythonExecutor::startScript() {
     stopWorkerThread();
 
@@ -171,6 +163,9 @@ bool PythonExecutor::startScript() {
                            0);
         return false;
     }
+
+    // Normalize tab characters to spaces to prevent TabError
+    currentScript_ = normalizeIndentation(currentScript_);
 
     try {
         py::gil_scoped_acquire gil;
@@ -193,6 +188,7 @@ bool PythonExecutor::startScript() {
         actionInFlight_ = false;
         actionResponseReady_ = false;
         lastActionResult_ = false;
+        lastActionError_.clear();
         pendingError_ = false;
         pendingErrorMessage_.clear();
         pendingErrorLine_ = 0;
@@ -225,8 +221,9 @@ bool PythonExecutor::executeTick() {
 
     PendingAction action;
     if (waitForAction(action)) {
-        const bool result = dispatchAction(action);
-        completeAction(result);
+        QString error;
+        const bool result = dispatchAction(action, error);
+        completeAction(result, error);
     }
 
     return !reportPendingError();
@@ -252,6 +249,7 @@ void PythonExecutor::resetState() {
     actionInFlight_ = false;
     actionResponseReady_ = false;
     lastActionResult_ = false;
+    lastActionError_.clear();
     pendingError_ = false;
     pendingErrorMessage_.clear();
     pendingErrorLine_ = 0;
@@ -272,10 +270,11 @@ bool PythonExecutor::waitForAction(PendingAction &action) {
     return true;
 }
 
-void PythonExecutor::completeAction(bool result) {
+void PythonExecutor::completeAction(bool result, const QString &error) {
     {
         std::lock_guard<std::mutex> lock(mutex_);
         lastActionResult_ = result;
+        lastActionError_ = error;
         actionResponseReady_ = true;
     }
     cv_.notify_all();
@@ -325,23 +324,6 @@ void PythonExecutor::storePythonError(const QString &msg, int line) {
     if (shouldReport) {
         QMetaObject::invokeMethod(this, [this]() { reportPendingError(); }, Qt::QueuedConnection);
     }
-}
-
-int PythonExecutor::currentPythonLine() const {
-#if !(defined(HAS_PYTHON) && defined(HAS_PYBIND11))
-    return 0;
-#else
-    if (!interpreterReady_) {
-        return 0;
-    }
-
-    py::gil_scoped_acquire gil;
-    PyFrameObject *frame = PyEval_GetFrame();
-    if (!frame) {
-        return 0;
-    }
-    return PyFrame_GetLineNumber(frame);
-#endif
 }
 
 bool PythonExecutor::isFunctionAllowed(const QString &funcName) const {
@@ -439,8 +421,16 @@ bool PythonExecutor::startWorkerThread() {
                 }
 
                 const bool result = lastActionResult_;
+                const QString errorMsg = lastActionError_;
                 actionResponseReady_ = false;
                 lastActionResult_ = false;
+                lastActionError_.clear();
+
+                // Log failure to console instead of throwing — lets Python code
+                // continue running and handle the failure with if/else.
+                if (!result && !errorMsg.isEmpty()) {
+                    emit printOutput(QStringLiteral("⚠ %1").arg(errorMsg));
+                }
                 return result;
             };
 
@@ -529,16 +519,6 @@ bool PythonExecutor::startWorkerThread() {
                 emit apiCalled(QStringLiteral("get_goals"), true);
                 return toPythonObject(goalsInfo());
             });
-            globals[py::str("get_energy")] = py::cpp_function([this, &requireFunction, &reportCurrentLine]() {
-                requireFunction(QStringLiteral("get_energy"));
-                reportCurrentLine();
-                emit apiCalled(QStringLiteral("get_energy"), true);
-                QVariantMap energy{
-                    {QStringLiteral("current"), drone_->energy()},
-                    {QStringLiteral("max"), drone_->maxEnergy()},
-                };
-                return toPythonObject(energy);
-            });
             globals[py::str("get_tick")] = py::cpp_function([this, &requireFunction, &reportCurrentLine]() {
                 requireFunction(QStringLiteral("get_tick"));
                 reportCurrentLine();
@@ -588,7 +568,7 @@ bool PythonExecutor::startWorkerThread() {
                 stopped = stopRequested_;
             }
             if (!stopped) {
-                storePythonError(message, line > 0 ? line : currentPythonLine());
+                storePythonError(message, line);
             }
         } catch (const std::exception &err) {
             bool stopped = false;
@@ -605,7 +585,7 @@ bool PythonExecutor::startWorkerThread() {
             const QString message = QString::fromStdString(err.what());
             if (!stopped && message != QStringLiteral("__CODEFARM_STOP__") &&
                 message != QStringLiteral("__CODEFARM_ERROR__")) {
-                storePythonError(message, currentPythonLine());
+                storePythonError(message, 0);
             }
         }
     });
@@ -635,6 +615,7 @@ void PythonExecutor::stopWorkerThread(bool clearScript) {
     actionInFlight_ = false;
     actionResponseReady_ = false;
     lastActionResult_ = false;
+    lastActionError_.clear();
     pendingAction_.reset();
     lastReportedLine_ = -1;
     if (clearScript) {
@@ -642,7 +623,7 @@ void PythonExecutor::stopWorkerThread(bool clearScript) {
     }
 }
 
-bool PythonExecutor::dispatchAction(const PendingAction &action) {
+bool PythonExecutor::dispatchAction(const PendingAction &action, QString &errorOut) {
     bool result = false;
     QString name;
 
@@ -650,30 +631,106 @@ bool PythonExecutor::dispatchAction(const PendingAction &action) {
     case ActionType::Move:
         name = QStringLiteral("move");
         result = executeMove(action.argument);
+        if (!result) {
+            if (action.argument != "up" && action.argument != "down" &&
+                action.argument != "left" && action.argument != "right") {
+                errorOut = QStringLiteral("move() 方向参数无效，应为 \"up\"/\"down\"/\"left\"/\"right\"");
+            } else {
+                // 检查是否因为岩石无法移动
+                int nx = drone_ ? drone_->x() : 0;
+                int ny = drone_ ? drone_->y() : 0;
+                if (action.argument == "up") ny--;
+                else if (action.argument == "down") ny++;
+                else if (action.argument == "left") nx--;
+                else if (action.argument == "right") nx++;
+                if (map_ && nx >= 0 && nx < map_->gridWidth() && ny >= 0 && ny < map_->gridHeight()) {
+                    const Cell &target = map_->cellAt(nx, ny);
+                    if (target.state == CellState::Rock) {
+                        errorOut = QStringLiteral("move() 目标位置是岩石，无法移动");
+                    } else {
+                        errorOut = QStringLiteral("move() 无法移动到该位置（超出地图边界）");
+                    }
+                } else {
+                    errorOut = QStringLiteral("move() 无法移动到该位置（超出地图边界）");
+                }
+            }
+        }
         break;
     case ActionType::Till:
         name = QStringLiteral("till");
         result = executeTill();
+        if (!result) {
+            if (map_ && drone_) {
+                const Cell &cell = map_->cellAt(drone_->x(), drone_->y());
+                if (cell.state == CellState::Rock) {
+                    errorOut = QStringLiteral("till() 当前格子是岩石，无法犁地");
+                } else {
+                    errorOut = QStringLiteral("till() 当前格子不是空地（状态: %1）").arg(Cell::stateToString(cell.state));
+                }
+            }
+        }
         break;
     case ActionType::Plant:
         name = QStringLiteral("plant");
         result = executePlant(action.argument);
+        if (!result) {
+            if (map_ && drone_) {
+                const Cell &cell = map_->cellAt(drone_->x(), drone_->y());
+                if (Cell::cropFromString(action.argument) == CropType::None) {
+                    errorOut = QStringLiteral("plant() 无效的作物类型: \"%1\"").arg(action.argument);
+                } else if (!isCropAllowed(action.argument)) {
+                    errorOut = QStringLiteral("plant() 当前关卡不允许种植: \"%1\"").arg(action.argument);
+                } else {
+                    errorOut = QStringLiteral("plant() 当前格子未开垦（状态: %1），请先 till()").arg(Cell::stateToString(cell.state));
+                }
+            }
+        }
         break;
     case ActionType::Water:
         name = QStringLiteral("water");
         result = executeWater();
+        if (!result) {
+            if (map_ && drone_) {
+                errorOut = QStringLiteral("water() 当前格子是空地，无法浇水");
+            }
+        }
         break;
     case ActionType::Fertilize:
         name = QStringLiteral("fertilize");
         result = executeFertilize();
+        if (!result) {
+            if (map_ && drone_) {
+                const Cell &cell = map_->cellAt(drone_->x(), drone_->y());
+                errorOut = QStringLiteral("fertilize() 当前格子没有作物（状态: %1）").arg(Cell::stateToString(cell.state));
+            }
+        }
         break;
     case ActionType::Harvest:
         name = QStringLiteral("harvest");
         result = executeHarvest();
+        if (!result) {
+            if (map_ && drone_) {
+                const Cell &cell = map_->cellAt(drone_->x(), drone_->y());
+                if (!cell.isHarvestable() && cell.crop != CropType::None) {
+                    errorOut = QStringLiteral("harvest() 向日葵不可收割，它会持续为周围作物提供阳光加成");
+                } else if (cell.state != CellState::Mature) {
+                    errorOut = QStringLiteral("harvest() 作物未成熟（状态: %1，进度: %2）")
+                        .arg(Cell::stateToString(cell.state))
+                        .arg(cell.progress, 0, 'f', 2);
+                } else if (cell.hasBug) {
+                    errorOut = QStringLiteral("harvest() 当前格子有虫害，请先 spray()");
+                }
+            }
+        }
         break;
     case ActionType::Spray:
         name = QStringLiteral("spray");
         result = executeSpray();
+        if (!result) {
+            if (map_ && drone_) {
+                errorOut = QStringLiteral("spray() 当前格子是空地，无需杀虫");
+            }
+        }
         break;
     case ActionType::Wait:
         name = QStringLiteral("wait");
@@ -705,7 +762,7 @@ bool PythonExecutor::executeHarvest() {
     const int y = drone_->y();
     Cell &cell = map_->cellAt(x, y);
 
-    if (cell.state != CellState::Mature || cell.hasBug || !drone_->consumeEnergy(1.0f)) {
+    if (cell.state != CellState::Mature || cell.hasBug || !cell.isHarvestable()) {
         return false;
     }
 
@@ -737,7 +794,7 @@ bool PythonExecutor::executeTill() {
     const int y = drone_->y();
     Cell &cell = map_->cellAt(x, y);
 
-    if (cell.state != CellState::Empty || !drone_->consumeEnergy(2.0f)) {
+    if (cell.state != CellState::Empty) {
         return false;
     }
 
@@ -769,7 +826,7 @@ bool PythonExecutor::executePlant(const QString &crop) {
     const int y = drone_->y();
     Cell &cell = map_->cellAt(x, y);
 
-    if (cell.state != CellState::Tilled || !drone_->consumeEnergy(1.5f)) {
+    if (cell.state != CellState::Tilled) {
         return false;
     }
 
@@ -795,7 +852,7 @@ bool PythonExecutor::executeWater() {
     const int y = drone_->y();
     Cell &cell = map_->cellAt(x, y);
 
-    if (cell.state == CellState::Empty || !drone_->consumeEnergy(1.5f)) {
+    if (cell.state == CellState::Empty || cell.state == CellState::Rock) {
         return false;
     }
 
@@ -813,8 +870,7 @@ bool PythonExecutor::executeFertilize() {
     const int y = drone_->y();
     Cell &cell = map_->cellAt(x, y);
 
-    if ((cell.state != CellState::Planted && cell.state != CellState::Mature) ||
-        !drone_->consumeEnergy(2.0f)) {
+    if (cell.state != CellState::Planted && cell.state != CellState::Mature) {
         return false;
     }
 
@@ -828,6 +884,25 @@ bool PythonExecutor::executeMove(const QString &dir) {
     if (!map_ || !drone_) {
         return false;
     }
+
+    // 计算目标位置，检查是否为岩石
+    int nx = drone_->x();
+    int ny = drone_->y();
+    if (dir == "up") ny--;
+    else if (dir == "down") ny++;
+    else if (dir == "left") nx--;
+    else if (dir == "right") nx++;
+    else return false;
+
+    if (nx < 0 || nx >= map_->gridWidth() || ny < 0 || ny >= map_->gridHeight()) {
+        return false;
+    }
+
+    const Cell &target = map_->cellAt(nx, ny);
+    if (target.state == CellState::Rock) {
+        return false;
+    }
+
     return drone_->move(dir, map_->gridWidth(), map_->gridHeight());
 }
 
@@ -840,7 +915,7 @@ bool PythonExecutor::executeSpray() {
     const int y = drone_->y();
     Cell &cell = map_->cellAt(x, y);
 
-    if (cell.state == CellState::Empty || !drone_->consumeEnergy(1.5f)) {
+    if (cell.state == CellState::Empty || cell.state == CellState::Rock) {
         return false;
     }
 

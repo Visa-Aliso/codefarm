@@ -48,7 +48,6 @@ Rectangle {
                 text: {
                     switch (root.reason) {
                         case "timeout": return "时间到了"
-                        case "energy": return "能量耗尽"
                         default: return "任务未完成"
                     }
                 }

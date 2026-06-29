@@ -58,15 +58,14 @@ private:
     };
 
     bool waitForAction(PendingAction &action);
-    void completeAction(bool result);
+    void completeAction(bool result, const QString &error = QString());
     bool reportPendingError();
     void storePythonError(const QString &msg, int line);
-    int currentPythonLine() const;
     bool isFunctionAllowed(const QString &funcName) const;
     bool isCropAllowed(const QString &cropName) const;
     bool startWorkerThread();
     void stopWorkerThread(bool clearScript = false);
-    bool dispatchAction(const PendingAction &action);
+    bool dispatchAction(const PendingAction &action, QString &errorOut);
     QVariantMap currentCellInfo() const;
     QVariantList goalsInfo() const;
 
@@ -92,6 +91,7 @@ private:
     bool actionInFlight_ = false;
     bool actionResponseReady_ = false;
     bool lastActionResult_ = false;
+    QString lastActionError_;
     bool pendingError_ = false;
     QString pendingErrorMessage_;
     int pendingErrorLine_ = 0;

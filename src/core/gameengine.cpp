@@ -16,10 +16,14 @@ GameEngine::GameEngine(QObject *parent)
 {
     tickTimer_->setTimerType(Qt::PreciseTimer);
     connect(tickTimer_, &QTimer::timeout, this, &GameEngine::onTick);
+
+    uiTimer_ = new QTimer(this);
+    uiTimer_->setInterval(1000);
+    connect(uiTimer_, &QTimer::timeout, this, &GameEngine::onUiTimerTick);
+
     executor_->setContext(map_, drone_, goals_);
 
     connect(drone_, &Drone::positionChanged, this, &GameEngine::dronePositionChanged);
-    connect(drone_, &Drone::energyChanged, this, &GameEngine::energyChanged);
     connect(goals_, &GoalSystem::goalCompleted, this, [this](int index) {
         emit goalCompleted(index);
         emit goalsChanged();
@@ -56,8 +60,6 @@ int GameEngine::timeElapsed() const {
     return static_cast<int>(elapsed / 1000);
 }
 
-float GameEngine::energy() const { return drone_->energy(); }
-float GameEngine::maxEnergy() const { return drone_->maxEnergy(); }
 int GameEngine::droneX() const { return drone_->x(); }
 int GameEngine::droneY() const { return drone_->y(); }
 
@@ -67,6 +69,7 @@ void GameEngine::startElapsedTimer() {
     }
     gameTimer_.start();
     elapsedTimerRunning_ = true;
+    uiTimer_->start();
 }
 
 void GameEngine::stopElapsedTimer() {
@@ -75,6 +78,7 @@ void GameEngine::stopElapsedTimer() {
     }
     accumulatedElapsedMs_ += gameTimer_.elapsed();
     elapsedTimerRunning_ = false;
+    uiTimer_->stop();
 }
 
 void GameEngine::loadLevel(int levelId) {
@@ -98,10 +102,9 @@ void GameEngine::loadLevel(int levelId) {
     currentStartX_ = cfg.droneStartX;
     currentStartY_ = cfg.droneStartY;
     currentBugProbability_ = cfg.bugProbability;
-    currentDroneMaxEnergy_ = cfg.droneMaxEnergy;
 
     map_->init(cfg.gridW, cfg.gridH, cfg.presetCells);
-    drone_->reset(cfg.droneStartX, cfg.droneStartY, cfg.droneMaxEnergy);
+    drone_->reset(cfg.droneStartX, cfg.droneStartY);
     goals_->init(cfg.goals);
     executor_->setAllowedFunctions(cfg.allowedFunctions);
     executor_->setAllowedSyntax(cfg.allowedSyntax);
@@ -110,12 +113,12 @@ void GameEngine::loadLevel(int levelId) {
     executor_->resetState();
 
     tutorialCode_ = cfg.tutorialCode;
+    startElapsedTimer();
     emit stateChanged();
     emit currentLevelChanged();
     emit tutorialCodeChanged();
     emit tickExecuted(0);
     emit timeChanged();
-    emit energyChanged();
     emit dronePositionChanged(drone_->x(), drone_->y());
     emit goalsChanged();
     emit logMessage(QStringLiteral("已载入关卡：%1").arg(currentLevelName_), QStringLiteral("#6B7F6C"));
@@ -142,7 +145,6 @@ void GameEngine::run() {
 }
 
 void GameEngine::pause() {
-    stopElapsedTimer();
     state_ = Paused;
     tickTimer_->stop();
     emit stateChanged();
@@ -159,7 +161,6 @@ void GameEngine::stepOnce() {
     state_ = Paused;
     tickTimer_->stop();
     onTick();
-    stopElapsedTimer();
     emit stateChanged();
     emit timeChanged();
 }
@@ -173,12 +174,11 @@ void GameEngine::reset() {
     tickCount_ = 0;
     executor_->resetState();
     map_->resetToPreset();
-    drone_->reset(currentStartX_, currentStartY_, currentDroneMaxEnergy_);
+    drone_->reset(currentStartX_, currentStartY_);
     goals_->reset();
     emit stateChanged();
     emit tickExecuted(0);
     emit timeChanged();
-    emit energyChanged();
     emit goalsChanged();
     emit dronePositionChanged(drone_->x(), drone_->y());
     emit logMessage(QStringLiteral("关卡已重置"), QStringLiteral("#6B7F6C"));
@@ -193,8 +193,8 @@ void GameEngine::setSpeed(float multiplier) {
 
 void GameEngine::giveUp() {
     tickTimer_->stop();
-    executor_->stopScript();
     stopElapsedTimer();
+    executor_->stopScript();
     state_ = Idle;
     emit stateChanged();
     emit levelFailed("player_quit");
@@ -202,8 +202,6 @@ void GameEngine::giveUp() {
 
 void GameEngine::onTick() {
     tickCount_++;
-    drone_->regenEnergy();
-    emit energyChanged();
 
     bool ok = executor_->executeTick();
     if (!ok) {
@@ -220,9 +218,9 @@ void GameEngine::onTick() {
     emit goalsChanged();
 
     if (goals_->allRequiredCompleted()) {
-        stopElapsedTimer();
         state_ = Idle;
         tickTimer_->stop();
+        stopElapsedTimer();
         goals_->finalizeTimeGoals(elapsedSec);
         emit stateChanged();
         emit goalsChanged();
@@ -231,7 +229,6 @@ void GameEngine::onTick() {
     }
 
     if (executor_->isScriptCompleted()) {
-        stopElapsedTimer();
         state_ = Idle;
         tickTimer_->stop();
         emit stateChanged();
@@ -242,10 +239,14 @@ void GameEngine::onTick() {
 
     if (maxTimeSec_ > 0 && elapsedSec >= maxTimeSec_) {
         executor_->stopScript();
-        stopElapsedTimer();
         state_ = Idle;
         tickTimer_->stop();
+        stopElapsedTimer();
         emit stateChanged();
         emit levelFailed(QStringLiteral("timeout"));
     }
+}
+
+void GameEngine::onUiTimerTick() {
+    emit timeChanged();
 }
