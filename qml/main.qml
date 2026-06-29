@@ -1,130 +1,95 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Window
+import QtQuick.Controls
 import CodeFarm
 
-ApplicationWindow {
-    id: root
-    width: 1280
-    height: 800
+Window {
+    id: window
+    width: 1360
+    height: 860
     minimumWidth: 1180
     minimumHeight: 760
     visible: true
-    title: "Code Farm：智能果园"
-    flags: Qt.Window | Qt.FramelessWindowHint
-    color: Theme.windowBg
+    title: "Code Farm"
+    flags: Qt.FramelessWindowHint | Qt.Window
+    color: Theme.bgMain
 
-    Rectangle {
-        anchors.fill: parent
-        color: Theme.windowBg
-        border.width: 1
-        border.color: Theme.shellBorder
-    }
-
-    WindowChrome {
-        id: windowChrome
+    // Custom title bar drag area (center only, avoids buttons on left/right)
+    MouseArea {
+        id: dragArea
+        anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
+        anchors.leftMargin: 60
+        anchors.rightMargin: 100
+        height: 32
+        z: 500
+        property real startX: 0
+        property real startY: 0
+        onPressed: function(mouse) { startX = mouse.x; startY = mouse.y }
+        onPositionChanged: function(mouse) {
+            window.x += mouse.x - startX
+            window.y += mouse.y - startY
+        }
+    }
+
+    // Window control buttons (top-right, green square style)
+    Row {
+        id: windowControls
         anchors.top: parent.top
-        targetWindow: root
+        anchors.right: parent.right
+        anchors.topMargin: 8
+        anchors.rightMargin: 12
+        z: 10000
+        spacing: 6
+
+        Rectangle {
+            width: 30; height: 30; radius: 6
+            color: helpBtnMa.containsMouse ? Theme.btnGreenHover : Theme.btnGreen
+            visible: navigator.depth > 2
+            Text { anchors.centerIn: parent; text: "?"; color: "white"; font.pixelSize: 14; font.weight: Font.Bold }
+            MouseArea { id: helpBtnMa; anchors.fill: parent; hoverEnabled: true
+                onClicked: {
+                    var gv = navigator.currentItem
+                    if (gv && gv.toggleHint) gv.toggleHint()
+                }
+            }
+        }
+        Rectangle {
+            width: 30; height: 30; radius: 6
+            color: minMa.containsMouse ? Theme.btnGreenHover : Theme.btnGreen
+            Text { anchors.centerIn: parent; text: "─"; color: "white"; font.pixelSize: 13; font.weight: Font.Bold }
+            MouseArea { id: minMa; anchors.fill: parent; hoverEnabled: true; onClicked: window.showMinimized() }
+        }
+        Rectangle {
+            width: 30; height: 30; radius: 6
+            color: closeMa.containsMouse ? "#8B3030" : Theme.btnGreen
+            Text { anchors.centerIn: parent; text: "×"; color: "white"; font.pixelSize: 16; font.weight: Font.Bold }
+            MouseArea { id: closeMa; anchors.fill: parent; hoverEnabled: true; onClicked: Qt.quit() }
+        }
     }
 
     StackView {
         id: navigator
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: windowChrome.bottom
-        anchors.bottom: parent.bottom
+        anchors.fill: parent
+        initialItem: mainMenuPage
 
         pushEnter: Transition {
-            ParallelAnimation {
-                PropertyAnimation {
-                    property: "opacity"
-                    from: 0
-                    to: 1
-                    duration: 240
-                    easing.type: Easing.OutQuad
-                }
-                PropertyAnimation {
-                    property: "x"
-                    from: navigator.width * 0.025
-                    to: 0
-                    duration: 280
-                    easing.type: Easing.OutCubic
-                }
-                PropertyAnimation {
-                    property: "scale"
-                    from: 1.01
-                    to: 1.0
-                    duration: 240
-                    easing.type: Easing.OutQuad
-                }
-            }
+            PropertyAnimation { property: "opacity"; from: 0; to: 1; duration: 200 }
         }
         pushExit: Transition {
-            ParallelAnimation {
-                PropertyAnimation {
-                    property: "opacity"
-                    from: 1
-                    to: 0
-                    duration: 170
-                    easing.type: Easing.OutQuad
-                }
-                PropertyAnimation {
-                    property: "x"
-                    from: 0
-                    to: -navigator.width * 0.015
-                    duration: 170
-                    easing.type: Easing.OutQuad
-                }
-            }
+            PropertyAnimation { property: "opacity"; from: 1; to: 0; duration: 150 }
         }
         popEnter: Transition {
-            ParallelAnimation {
-                PropertyAnimation {
-                    property: "opacity"
-                    from: 0
-                    to: 1
-                    duration: 240
-                    easing.type: Easing.OutQuad
-                }
-                PropertyAnimation {
-                    property: "x"
-                    from: -navigator.width * 0.02
-                    to: 0
-                    duration: 240
-                    easing.type: Easing.OutCubic
-                }
-                PropertyAnimation {
-                    property: "scale"
-                    from: 1.01
-                    to: 1.0
-                    duration: 220
-                    easing.type: Easing.OutQuad
-                }
-            }
+            PropertyAnimation { property: "opacity"; from: 0; to: 1; duration: 200 }
         }
         popExit: Transition {
-            ParallelAnimation {
-                PropertyAnimation {
-                    property: "opacity"
-                    from: 1
-                    to: 0
-                    duration: 170
-                    easing.type: Easing.OutQuad
-                }
-                PropertyAnimation {
-                    property: "x"
-                    from: 0
-                    to: navigator.width * 0.02
-                    duration: 170
-                    easing.type: Easing.OutQuad
-                }
-            }
-        }
-
-        Component.onCompleted: {
-            push("qrc:/CodeFarm/qml/pages/SplashScreen.qml")
+            PropertyAnimation { property: "opacity"; from: 1; to: 0; duration: 150 }
         }
     }
+
+    Component { id: mainMenuPage; MainMenu {} }
+    Component { id: levelSelectPage; LevelSelect {} }
+    Component { id: gameViewPage; GameView {} }
+    Component { id: helpPage; HelpPage {} }
 }

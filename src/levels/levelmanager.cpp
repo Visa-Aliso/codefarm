@@ -126,7 +126,7 @@ void LevelManager::loadLevels() {
         l.allowedFunctions = {"move","till","plant","harvest","water","fertilize","wait","get_pos","get_map_size"};
         l.allowedSyntax = {"expr","call","assign","for","in","range","if"};
         l.allowedCrops = {"wheat","carrot"};
-        l.tutorialCode = u"# 目标是收获 4 株作物\n# 2x2 地图适合蛇形路线，成长期间可用 wait() 消耗 tick\n"_qs;
+        l.tutorialCode = u"# 2x2 地图，种植并收获4株作物\n\n# 种植第一行\ntill()\nplant(\"wheat\")\nwater()\nfertilize()\nmove(\"right\")\ntill()\nplant(\"wheat\")\nwater()\nfertilize()\n\n# 移到第二行\nmove(\"down\")\ntill()\nplant(\"wheat\")\nwater()\nfertilize()\nmove(\"left\")\ntill()\nplant(\"wheat\")\nwater()\nfertilize()\n\n# 等待作物成熟\nfor i in range(20):\n    wait()\n\n# 收割所有\nharvest()\nmove(\"right\")\nharvest()\nmove(\"up\")\nharvest()\nmove(\"left\")\nharvest()\n"_qs;
         l.presetCells = {};
         l.goals = {
             {u"收获作物 × 4"_qs, GoalType::HarvestCount, "", 4, 0, false, StarTier::Star1},
@@ -149,7 +149,7 @@ void LevelManager::loadLevels() {
         l.allowedFunctions = {"move","till","plant","harvest","water","fertilize","spray","wait","debug","get_pos","get_map_size","get_current"};
         l.allowedSyntax = {"expr","call","assign","for","in","range","if","else","while","def"};
         l.allowedCrops = {"wheat","carrot","corn"};
-        l.tutorialCode = u"# 玉米需要 50 tick 成长\n# debug() / get_current() 可查看当前格状态\n# wait() 消耗一个 tick，spray() 可处理虫害\n"_qs;
+        l.tutorialCode = u"# 3x3 地图，种植并收获2株玉米\n\n# 种第一株玉米\ntill()\nplant(\"corn\")\nwater()\nfertilize()\n\n# 种第二株玉米\nmove(\"right\")\ntill()\nplant(\"corn\")\nwater()\nfertilize()\n\n# 等待玉米成熟（施肥后约35 tick）\nfor i in range(40):\n    wait()\n    # 检查虫害\n    move(\"left\")\n    cell = get_current()\n    if cell[\"bug\"]:\n        spray()\n    move(\"right\")\n    cell = get_current()\n    if cell[\"bug\"]:\n        spray()\n\n# 收割\nmove(\"left\")\nharvest()\nmove(\"right\")\nharvest()\n"_qs;
         l.presetCells = {};
         l.goals = {
             {u"收获玉米 × 2"_qs, GoalType::HarvestCount, "corn", 2, 0, false, StarTier::Star1},
@@ -172,7 +172,7 @@ void LevelManager::loadLevels() {
         l.allowedFunctions = {"move","till","plant","harvest","water","fertilize","spray","wait","debug","get_pos","get_map_size","get_current","get_energy"};
         l.allowedSyntax = {"expr","call","assign","for","in","range","if","else","while","def","not","and","or"};
         l.allowedCrops = {"wheat","carrot","tomato","corn"};
-        l.tutorialCode = u"# 混合种植：小麦快、胡萝卜需水、番茄均衡、玉米慢\n# wait() 推进时间，spray() 清理虫害\n\ndef plant_row(crop):\n    for i in range(4):\n        till()\n        plant(crop)\n        water()\n        if i < 3:\n            move(\"right\")\n"_qs;
+        l.tutorialCode = u"# 4x4 地图，混合种植多种作物\n\ndef plant_row(crop):\n    for i in range(4):\n        till()\n        plant(crop)\n        water()\n        if i < 3:\n            move(\"right\")\n\n# 第一行种小麦\nplant_row(\"wheat\")\n\n# 移到第二行\nmove(\"down\")\nfor i in range(3):\n    move(\"left\")\n\n# 第二行种胡萝卜\nplant_row(\"carrot\")\n\n# 移到第三行\nmove(\"down\")\nfor i in range(3):\n    move(\"left\")\n\n# 第三行种番茄\nplant_row(\"tomato\")\n\n# 等待并处理虫害\nfor t in range(50):\n    wait()\n    pos = get_pos()\n    cell = get_current()\n    if cell[\"bug\"]:\n        spray()\n\n# 收割第一行小麦\nfor i in range(3):\n    move(\"up\")\nfor i in range(3):\n    move(\"left\")\nfor i in range(4):\n    harvest()\n    if i < 3:\n        move(\"right\")\n\n# 收割第二行胡萝卜\nmove(\"down\")\nfor i in range(3):\n    move(\"left\")\nfor i in range(4):\n    harvest()\n    if i < 3:\n        move(\"right\")\n\n# 收割第三行番茄\nmove(\"down\")\nfor i in range(3):\n    move(\"left\")\nfor i in range(4):\n    harvest()\n    if i < 3:\n        move(\"right\")\n"_qs;
         l.presetCells = {};
         l.goals = {
             {u"收获小麦 × 4"_qs, GoalType::HarvestCount, "wheat", 4, 0, false, StarTier::Star1},
@@ -195,7 +195,7 @@ void LevelManager::loadLevels() {
         l.allowedFunctions = {"move","till","plant","harvest","water","fertilize","spray","wait","debug","get_pos","get_map_size","get_current","get_energy","get_tick","get_goals"};
         l.allowedSyntax = {"expr","call","assign","for","in","range","if","else","while","def","not","and","or","break","continue","return"};
         l.allowedCrops = {"wheat","carrot","tomato","corn","sunflower"};
-        l.tutorialCode = u"# 向日葵：90 tick 成长，虫害概率高\n# 使用 wait() 推进 tick，get_tick()/get_goals() 查询状态\n# spray() 可以清除虫害并获得短暂免疫\n"_qs;
+        l.tutorialCode = u"# 5x5 地图，种植并收获向日葵\n\n# 种植3株向日葵\ntill()\nplant(\"sunflower\")\nwater()\nfertilize()\n\nmove(\"right\")\ntill()\nplant(\"sunflower\")\nwater()\nfertilize()\n\nmove(\"right\")\ntill()\nplant(\"sunflower\")\nwater()\nfertilize()\n\n# 等待向日葵成熟（施肥后约60 tick）\n# 期间需要巡逻处理虫害\nfor t in range(70):\n    wait()\n    # 每10 tick巡逻一次\n    if t % 10 == 0:\n        pos = get_pos()\n        # 回到起点巡逻\n        while get_pos()[0] > 0:\n            move(\"left\")\n        for i in range(3):\n            cell = get_current()\n            if cell[\"bug\"]:\n                spray()\n            if i < 2:\n                move(\"right\")\n        # 回到最右\n        while get_pos()[0] > 0:\n            move(\"left\")\n\n# 收割所有向日葵\nwhile get_pos()[0] > 0:\n    move(\"left\")\nfor i in range(3):\n    harvest()\n    if i < 2:\n        move(\"right\")\n"_qs;
         l.presetCells = {};
         l.goals = {
             {u"收获向日葵 × 1"_qs, GoalType::HarvestCount, "sunflower", 1, 0, false, StarTier::Star1},
@@ -230,6 +230,7 @@ QVariantMap LevelManager::getLevel(int id) const {
     return {
         {"id", l.levelId}, {"name", l.name},
         {"description", l.description},
+        {"tutorialCode", l.tutorialCode},
         {"gridW", l.gridW}, {"gridH", l.gridH},
         {"maxTimeSec", l.maxTimeSec},
         {"goals", goals},
@@ -278,6 +279,12 @@ void LevelManager::recordClear(int id, int timeUsed, int starsEarned) {
         progress_[nextId].unlocked = true;
         emit levelUnlocked(nextId);
     }
+    emit progressChanged();
+}
+
+void LevelManager::resetProgress() {
+    progress_.clear();
+    progress_[1].unlocked = true;
     emit progressChanged();
 }
 

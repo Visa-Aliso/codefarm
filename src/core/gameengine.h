@@ -70,6 +70,7 @@ signals:
     void goalsChanged();
     void levelCleared(int stars);
     void levelFailed(const QString &reason);
+    void scriptCompletedWithoutGoals();
     void logMessage(const QString &text, const QString &color);
     void errorOccurred(const QString &msg, int line);
     void lineExecuting(int line);

@@ -1,90 +1,65 @@
-pragma ComponentBehavior: Bound
 import QtQuick
 import CodeFarm
 
-FloatingPanel {
-    id: miniMap
-    required property var engine
-    required property var mapModel
-    property int focusX: -1
-    property int focusY: -1
+Rectangle {
+    id: root
+    width: 90
+    height: 90
+    radius: 8
+    color: Theme.panelBg
+    border.width: 1
+    border.color: Theme.borderDim
 
-    width: 192
-    height: 202
-    title: "Field Grid"
-    subtitle: "无人机与焦点位置"
-    accentColor: Theme.secondaryBlue
-    visible: mapModel.gridWidth > 0 && mapModel.gridHeight > 0
+    property int gridWidth: 1
+    property int gridHeight: 1
+    property int droneX: 0
+    property int droneY: 0
+    property var mapModel: null
 
-    function cellColor(state, crop, hasBug) {
-        if (hasBug) return "#D96A6A"
-        if (state === "mature") return "#7EBC68"
-        if (state === "planted") {
-            return crop === "corn" ? "#B7C74B"
-                 : crop === "carrot" ? "#D88F54"
-                 : crop === "tomato" ? "#C96F62"
-                 : crop === "sunflower" ? "#D5B45A"
-                 : "#A7C46A"
-        }
-        if (state === "tilled") return "#9B7A52"
-        return "#D6D0BD"
-    }
-
-    Item {
-        id: mapArea
+    Canvas {
+        id: miniCanvas
         anchors.fill: parent
+        anchors.margins: 8
 
-        readonly property real rawCellSize: Math.min(
-                                                width / Math.max(1, miniMap.mapModel.gridWidth),
-                                                height / Math.max(1, miniMap.mapModel.gridHeight)
-                                            )
-        readonly property real cellSize: Math.max(12, Math.floor(rawCellSize))
-        readonly property real boardWidth: cellSize * miniMap.mapModel.gridWidth
-        readonly property real boardHeight: cellSize * miniMap.mapModel.gridHeight
+        onPaint: {
+            var ctx = getContext("2d")
+            ctx.clearRect(0, 0, width, height)
+            var cellW = width / root.gridWidth
+            var cellH = height / root.gridHeight
 
-        Rectangle {
-            anchors.centerIn: parent
-            width: mapArea.boardWidth + 16
-            height: mapArea.boardHeight + 16
-            radius: 16
-            color: Qt.rgba(0.10, 0.18, 0.14, 0.10)
-            border.width: 1
-            border.color: Qt.rgba(0.12, 0.18, 0.14, 0.10)
-
-            Item {
-                anchors.centerIn: parent
-                width: mapArea.boardWidth
-                height: mapArea.boardHeight
-
-                Repeater {
-                    model: miniMap.mapModel
-
-                    delegate: Rectangle {
-                        id: miniCell
-                        required property var model
-
-                        x: miniCell.model.gridX * mapArea.cellSize
-                        y: miniCell.model.gridY * mapArea.cellSize
-                        width: Math.max(10, mapArea.cellSize - 2)
-                        height: Math.max(10, mapArea.cellSize - 2)
-                        radius: 4
-                        color: miniMap.cellColor(miniCell.model.state, miniCell.model.crop, miniCell.model.hasBug)
-                        border.width: miniCell.model.gridX === miniMap.focusX &&
-                                      miniCell.model.gridY === miniMap.focusY ? 2 : 0
-                        border.color: Theme.textOnDark
-
-                        Rectangle {
-                            anchors.centerIn: parent
-                            width: 6
-                            height: 6
-                            radius: 3
-                            color: Theme.textOnDark
-                            visible: miniCell.model.gridX === miniMap.engine.droneX &&
-                                     miniCell.model.gridY === miniMap.engine.droneY
+            for (var gy = 0; gy < root.gridHeight; gy++) {
+                for (var gx = 0; gx < root.gridWidth; gx++) {
+                    var cell = appVm.cellAt(gx, gy)
+                    var color = "#666666"
+                    if (cell) {
+                        switch (cell.state) {
+                            case 0: color = Theme.tileEmpty; break
+                            case 1: color = Theme.tileTilled; break
+                            case 2: color = Theme.tilePlanted; break
+                            case 3: color = Theme.tileMature; break
+                            case 4: color = Theme.tileBug; break
                         }
                     }
+                    ctx.fillStyle = color
+                    ctx.fillRect(gx * cellW + 1, gy * cellH + 1, cellW - 2, cellH - 2)
                 }
             }
+
+            // Drone position
+            ctx.fillStyle = "#5AAFCF"
+            ctx.beginPath()
+            ctx.arc(root.droneX * cellW + cellW/2, root.droneY * cellH + cellH/2, 3, 0, Math.PI * 2)
+            ctx.fill()
         }
+    }
+
+    Connections {
+        target: farmMap
+        function onCellChanged() { miniCanvas.requestPaint() }
+    }
+
+    Connections {
+        target: appVm
+        function onRuntimeChanged() { miniCanvas.requestPaint() }
     }
 }

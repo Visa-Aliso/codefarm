@@ -1,85 +1,77 @@
 import QtQuick
 import CodeFarm
-import QtQuick.Layouts
 
-Item {
-    id: confirmDialog
-    property string title: "确认"
-    property string message: ""
-    property string acceptText: "确认"
-    property string cancelText: "取消"
-    signal accepted()
-    signal rejected()
-
+Rectangle {
+    id: root
     anchors.fill: parent
+    color: Theme.overlayDark
     visible: false
-    z: 100
+    z: 1000
+
+    property string title: ""
+    property string message: ""
+
+    signal confirmed()
+    signal cancelled()
+
+    function show(t, m) {
+        title = t
+        message = m
+        visible = true
+    }
+
+    MouseArea { anchors.fill: parent; onClicked: {} }
 
     Rectangle {
-        anchors.fill: parent
-        color: Theme.overlayDark
-    }
-
-    MouseArea {
-        anchors.fill: parent
-        onClicked: confirmDialog.rejected()
-    }
-
-    FloatingPanel {
-        id: panel
+        width: 320
+        height: col.height + 48
         anchors.centerIn: parent
-        width: 408
-        height: 238
-        title: confirmDialog.title
-        subtitle: "请确认这次操作"
-        accentColor: Theme.warning
-        scale: confirmDialog.visible ? 1.0 : 0.96
-        opacity: confirmDialog.visible ? 1.0 : 0.0
+        radius: 12
+        color: Theme.editorBg
+        border.width: 1
+        border.color: Theme.borderDim
 
-        Behavior on scale {
-            NumberAnimation {
-                duration: 160
-                easing.type: Easing.OutQuad
-            }
-        }
-
-        Behavior on opacity {
-            NumberAnimation {
-                duration: 140
-                easing.type: Easing.OutQuad
-            }
-        }
-
-        ColumnLayout {
-            anchors.fill: parent
+        Column {
+            id: col
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.margins: 24
             spacing: 16
 
             Text {
-                text: confirmDialog.message
-                Layout.fillWidth: true
+                text: root.title
+                color: Theme.textLight
+                font.family: Theme.fontUI
+                font.pixelSize: 18
+                font.weight: Font.Bold
+            }
+
+            Text {
+                text: root.message
+                color: Theme.textDim
                 font.family: Theme.fontUI
                 font.pixelSize: 14
-                color: Theme.textPrimary
+                width: parent.width
                 wrapMode: Text.WordWrap
             }
 
-            Item { Layout.fillHeight: true }
-
-            RowLayout {
-                Layout.fillWidth: true
+            Row {
                 spacing: 12
+                anchors.horizontalCenter: parent.horizontalCenter
 
-                Item { Layout.fillWidth: true }
-
-                PillButton {
-                    text: confirmDialog.cancelText
-                    onClicked: confirmDialog.rejected()
+                MenuButton {
+                    text: "Cancel"
+                    implicitW: 100
+                    implicitH: 36
+                    onClicked: { root.visible = false; root.cancelled() }
                 }
-
-                PillButton {
+                MenuButton {
+                    text: "Confirm"
                     primary: true
-                    text: confirmDialog.acceptText
-                    onClicked: confirmDialog.accepted()
+                    implicitW: 100
+                    implicitH: 36
+                    onClicked: { root.visible = false; root.confirmed() }
                 }
             }
         }

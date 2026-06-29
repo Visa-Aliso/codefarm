@@ -236,7 +236,7 @@ void GameEngine::onTick() {
         tickTimer_->stop();
         emit stateChanged();
         emit logMessage(QStringLiteral("脚本已执行完毕，但目标尚未完成"), QStringLiteral("#D94F4F"));
-        emit levelFailed(QStringLiteral("script_completed"));
+        emit scriptCompletedWithoutGoals();
         return;
     }
 

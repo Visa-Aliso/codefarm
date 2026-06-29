@@ -1,214 +1,134 @@
-pragma ComponentBehavior: Bound
 import QtQuick
 import CodeFarm
-import QtQuick.Layouts
-import QtQuick.Controls
 
-Item {
-    id: resultRoot
-    property int levelId: 1
-    property int stars: 2
-    property var goals: []
-    property int timeUsed: 0
-    readonly property var levelStore: levelManager
-    readonly property var levelInfo: resultRoot.levelStore.getLevel(resultRoot.levelId)
-    readonly property var navigator: resultRoot.StackView ? resultRoot.StackView.view : null
-    property bool introReady: false
+Rectangle {
+    id: root
+    color: Theme.overlayDark
+    visible: false
 
-    Component.onCompleted: introReady = true
+    property int stars: 0
+    property var goals: appVm.activeGoals
+    property int timeUsed: appVm.timeElapsed
 
-    SceneBackdrop {
-        anchors.fill: parent
-        showParticles: false
-    }
+    MouseArea { anchors.fill: parent; onClicked: {} }
 
     Rectangle {
-        anchors.fill: parent
-        color: Qt.rgba(1, 1, 1, 0.10)
-    }
-
-    Rectangle {
-        id: panel
+        width: 400
+        height: contentCol.height + 48
         anchors.centerIn: parent
-        width: 620
-        height: 560
-        radius: 34
-        opacity: resultRoot.introReady ? 1 : 0
-        scale: resultRoot.introReady ? 1 : 0.96
-        gradient: Gradient {
-            orientation: Gradient.Vertical
-            GradientStop { position: 0.0; color: Theme.surfaceRaised }
-            GradientStop { position: 1.0; color: Theme.cardBg }
-        }
+        radius: 12
+        color: Theme.editorBg
         border.width: 1
-        border.color: Theme.borderStrong
+        border.color: Theme.statusRunning
 
-        Behavior on opacity {
-            NumberAnimation {
-                duration: 240
-                easing.type: Easing.OutQuad
-            }
-        }
-
-        Behavior on scale {
-            NumberAnimation {
-                duration: 260
-                easing.type: Easing.OutCubic
-            }
-        }
-
-        ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: 32
-            spacing: 18
-
-            Rectangle {
-                Layout.alignment: Qt.AlignHCenter
-                Layout.preferredWidth: 156
-                Layout.preferredHeight: 34
-                radius: 17
-                color: Qt.rgba(Theme.success.r, Theme.success.g, Theme.success.b, 0.12)
-                border.width: 1
-                border.color: Qt.rgba(Theme.success.r, Theme.success.g, Theme.success.b, 0.22)
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "MISSION CLEAR"
-                    font.family: Theme.fontCode
-                    font.pixelSize: 11
-                    color: Theme.success
-                }
-            }
+        Column {
+            id: contentCol
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.margins: 24
+            spacing: 16
 
             Text {
-                Layout.alignment: Qt.AlignHCenter
-                text: "关卡通关"
+                text: "关卡完成！"
+                color: Theme.statusRunning
                 font.family: Theme.fontUI
-                font.pixelSize: 30
+                font.pixelSize: 24
                 font.weight: Font.Bold
-                color: Theme.textPrimary
+                anchors.horizontalCenter: parent.horizontalCenter
             }
 
-            Text {
-                Layout.alignment: Qt.AlignHCenter
-                text: (resultRoot.levelInfo.name || "") + " · 用时 %1s".arg(resultRoot.timeUsed)
-                font.family: Theme.fontUI
-                font.pixelSize: 14
-                color: Theme.textSecondary
-            }
+            // Stars
+            Row {
+                spacing: 8
+                anchors.horizontalCenter: parent.horizontalCenter
 
-            StarRating {
-                Layout.alignment: Qt.AlignHCenter
-                count: resultRoot.stars
-            }
+                Repeater {
+                    model: 3
+                    Text {
+                        text: "★"
+                        color: index < root.stars ? Theme.starGold : Theme.textMuted
+                        font.pixelSize: 32
 
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Theme.border
-            }
-
-            Repeater {
-                model: resultRoot.goals
-
-                delegate: Rectangle {
-                    id: goalRow
-                    required property var modelData
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 52
-                    radius: 18
-                    color: goalRow.modelData.completed
-                           ? Qt.rgba(Theme.success.r, Theme.success.g, Theme.success.b, 0.10)
-                           : Qt.rgba(1, 1, 1, 0.36)
-                    border.width: 1
-                    border.color: goalRow.modelData.completed
-                                  ? Qt.rgba(Theme.success.r, Theme.success.g, Theme.success.b, 0.24)
-                                  : Theme.border
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 14
-                        anchors.rightMargin: 14
-                        spacing: 10
-
-                        Rectangle {
-                            Layout.preferredWidth: 28
-                            Layout.preferredHeight: 28
-                            radius: 14
-                            color: goalRow.modelData.completed ? Theme.success : Qt.rgba(0.2, 0.22, 0.16, 0.10)
-
-                            Text {
-                                anchors.centerIn: parent
-                                text: goalRow.modelData.completed ? "✓" : "•"
-                                font.pixelSize: 13
-                                font.weight: Font.Bold
-                                color: goalRow.modelData.completed ? Theme.textOnDark : Theme.textSecondary
-                            }
+                        scale: starAnim.running ? 1.0 : 0.8
+                        NumberAnimation on scale {
+                            id: starAnim
+                            from: 0.5; to: 1.0
+                            duration: 300
+                            easing.type: Easing.OutBack
+                            running: root.visible && index < root.stars
                         }
+                    }
+                }
+            }
 
+            // Stats
+            Row {
+                spacing: 24
+                anchors.horizontalCenter: parent.horizontalCenter
+
+                Column {
+                    spacing: 2
+                    Text { text: "TIME"; color: Theme.textMuted; font.family: Theme.fontCode; font.pixelSize: 10 }
+                    Text { text: root.timeUsed + "s"; color: Theme.textLight; font.family: Theme.fontCode; font.pixelSize: 16 }
+                }
+                Column {
+                    spacing: 2
+                    Text { text: "STARS"; color: Theme.textMuted; font.family: Theme.fontCode; font.pixelSize: 10 }
+                    Text { text: root.stars + "/3"; color: Theme.starGold; font.family: Theme.fontCode; font.pixelSize: 16 }
+                }
+            }
+
+            // Goals list
+            Column {
+                width: parent.width
+                spacing: 6
+
+                Repeater {
+                    model: root.goals
+                    Row {
+                        spacing: 8
                         Text {
-                            text: goalRow.modelData.description || ""
-                            Layout.fillWidth: true
-                            font.family: Theme.fontUI
+                            text: modelData.completed ? "✓" : "✗"
+                            color: modelData.completed ? Theme.statusRunning : Theme.statusError
                             font.pixelSize: 14
-                            color: Theme.textPrimary
                         }
-
                         Text {
-                            text: "★" + (goalRow.modelData.starTier || 1)
-                            font.family: Theme.fontCode
-                            font.pixelSize: 11
-                            color: Theme.starGold
+                            text: modelData.description || ""
+                            color: Theme.textDim
+                            font.family: Theme.fontUI
+                            font.pixelSize: 13
                         }
                     }
                 }
             }
 
-            Item { Layout.fillHeight: true }
-
-            RowLayout {
-                Layout.alignment: Qt.AlignHCenter
+            // Buttons
+            Row {
                 spacing: 12
+                anchors.horizontalCenter: parent.horizontalCenter
+                topPadding: 8
 
-                PillButton {
-                    text: "重新挑战"
-                    onClicked: {
-                        if (resultRoot.navigator) {
-                            resultRoot.navigator.replace(
-                                        null,
-                                        "qrc:/CodeFarm/qml/pages/GameView.qml",
-                                        { levelId: resultRoot.levelId }
-                                    )
-                        }
-                    }
+                MenuButton {
+                    text: "重试"
+                    implicitW: 100; implicitH: 38
+                    onClicked: { root.visible = false; appVm.resetLevel() }
                 }
-
-                PillButton {
+                MenuButton {
+                    text: "下一关"
                     primary: true
-                    text: resultRoot.levelId < resultRoot.levelStore.levelCount() ? "下一关 →" : "返回关卡"
+                    implicitW: 120; implicitH: 38
                     onClicked: {
-                        if (!resultRoot.navigator) {
-                            return
-                        }
-                        if (resultRoot.levelId < resultRoot.levelStore.levelCount()) {
-                            resultRoot.navigator.replace(
-                                        null,
-                                        "qrc:/CodeFarm/qml/pages/LevelBriefing.qml",
-                                        { levelId: resultRoot.levelId + 1 }
-                                    )
-                        } else {
-                            resultRoot.navigator.replace(null, "qrc:/CodeFarm/qml/pages/LevelSelect.qml")
-                        }
+                        root.visible = false
+                        var next = appVm.nextUnlockedLevel()
+                        if (next > 0) { appVm.openLevel(next) }
+                        else { navigator.pop() }
                     }
                 }
-
-                PillButton {
-                    text: "关卡选择"
-                    onClicked: {
-                        if (resultRoot.navigator) {
-                            resultRoot.navigator.replace(null, "qrc:/CodeFarm/qml/pages/LevelSelect.qml")
-                        }
-                    }
+                MenuButton {
+                    text: "返回"
+                    implicitW: 100; implicitH: 38
+                    onClicked: { root.visible = false; navigator.pop() }
                 }
             }
         }

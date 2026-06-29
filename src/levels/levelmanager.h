@@ -27,6 +27,7 @@ public:
     int completedCount() const;
     void recordClear(int id, int timeUsed, int starsEarned);
     void loadProgress(const QJsonObject &savedProgress);
+    void resetProgress();
 
 signals:
     void progressChanged();

@@ -16,6 +16,7 @@
 #include "editor/syntaxhighlighter.h"
 #include "levels/levelmanager.h"
 #include "save/savemanager.h"
+#include "ui/appviewmodel.h"
 
 namespace {
 bool hasSmokeTestArg(int argc, char *argv[]) {
@@ -177,6 +178,7 @@ int main(int argc, char *argv[]) {
     QFontDatabase::addApplicationFont(":/CodeFarm/resources/fonts/Nunito-SemiBold.ttf");
     QFontDatabase::addApplicationFont(":/CodeFarm/resources/fonts/Nunito-Bold.ttf");
     QFontDatabase::addApplicationFont(":/CodeFarm/resources/fonts/JetBrainsMono-Regular.ttf");
+    QFontDatabase::addApplicationFont(":/CodeFarm/resources/fonts/fredoka-one.one-regular.ttf");
 
     QQmlApplicationEngine engine;
     qmlRegisterType<SyntaxHighlighter>("CodeFarm", 1, 0, "SyntaxHighlighter");
@@ -188,6 +190,7 @@ int main(int argc, char *argv[]) {
     saveManager->load();
     levelManager->loadProgress(saveManager->levelProgress());
     gameEngine->setLevelManager(levelManager);
+    auto *appVm = new AppViewModel(gameEngine, levelManager, saveManager, &app);
 
     QObject::connect(gameEngine, &GameEngine::levelCleared, &app, [=](int stars) {
         const int levelId = gameEngine->currentLevelId();
@@ -206,6 +209,7 @@ int main(int argc, char *argv[]) {
     engine.rootContext()->setContextProperty("levelManager", levelManager);
     engine.rootContext()->setContextProperty("saveManager", saveManager);
     engine.rootContext()->setContextProperty("farmMap", gameEngine->farmMap());
+    engine.rootContext()->setContextProperty("appVm", appVm);
 
     const QUrl url(QStringLiteral("qrc:/CodeFarm/qml/main.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed,

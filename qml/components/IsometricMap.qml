@@ -1,233 +1,241 @@
-pragma ComponentBehavior: Bound
 import QtQuick
 import CodeFarm
 
 Item {
-    id: mapRoot
-    readonly property var engine: gameEngine
-    readonly property var mapModel: farmMap
-
-    property real tileW: 64
-    property real tileH: 32
+    id: root
+    property int gridWidth: 1
+    property int gridHeight: 1
+    property var mapModel: null
+    property int droneX: 0
+    property int droneY: 0
+    property real tileW: 96
+    property real tileH: 48
     property real zoomLevel: 1.0
-    property int hoveredX: -1
-    property int hoveredY: -1
-    property int selectedX: -1
-    property int selectedY: -1
-    property var hoveredCell: ({})
-    property var selectedCell: ({})
-    readonly property real boardWidth: (mapRoot.mapModel.gridWidth + mapRoot.mapModel.gridHeight) * mapRoot.tileW / 2
-    readonly property real boardHeight: (mapRoot.mapModel.gridWidth + mapRoot.mapModel.gridHeight) * mapRoot.tileH / 2 + 32
+    property real panX: 0
+    property real panY: 0
 
-    function updateHoveredCell(x, y) {
-        mapRoot.hoveredX = x
-        mapRoot.hoveredY = y
-        mapRoot.hoveredCell = x >= 0 && y >= 0 ? mapRoot.mapModel.getCellAt(x, y) : ({})
+    signal cellClicked(int x, int y)
+    signal cellHovered(int x, int y, real screenX, real screenY)
+    signal cellExited()
+
+    function toScreen(gx, gy) {
+        var sx = (gx - gy) * tileW / 2
+        var sy = (gx + gy) * tileH / 2
+        return Qt.point(sx, sy)
     }
 
-    function updateSelectedCell(x, y) {
-        mapRoot.selectedX = x
-        mapRoot.selectedY = y
-        mapRoot.selectedCell = x >= 0 && y >= 0 ? mapRoot.mapModel.getCellAt(x, y) : ({})
-    }
-
-    Rectangle {
-        anchors.fill: parent
-        radius: 30
-        color: Qt.rgba(1, 1, 1, 0.02)
-        border.width: 1
-        border.color: Qt.rgba(1, 1, 1, 0.04)
-    }
-
-    Repeater {
-        model: 5
-
-        Rectangle {
-            required property int index
-            width: parent.width * 0.7
-            height: 1
-            x: parent.width * 0.15
-            y: parent.height * (0.18 + index * 0.12)
-            color: Qt.rgba(1, 1, 1, 0.06)
-        }
+    function toGrid(sx, sy) {
+        var gx = (sx / (tileW / 2) + sy / (tileH / 2)) / 2
+        var gy = (sy / (tileH / 2) - sx / (tileW / 2)) / 2
+        return Qt.point(Math.floor(gx), Math.floor(gy))
     }
 
     Item {
-        id: viewport
-        anchors.fill: parent
-        clip: true
+        id: mapContainer
+        anchors.centerIn: parent
+        scale: root.zoomLevel
+        x: root.panX
+        y: root.panY
 
-        Scale {
-            id: zoomTransform
-            origin.x: viewport.width / 2
-            origin.y: viewport.height / 2
-            xScale: mapRoot.zoomLevel
-            yScale: mapRoot.zoomLevel
-        }
+        Behavior on scale { NumberAnimation { duration: 150 } }
 
-        Rectangle {
-            width: Math.max(140, mapRoot.boardWidth * 0.72)
-            height: Math.max(42, mapRoot.boardHeight * 0.20)
-            radius: height / 2
-            anchors.horizontalCenter: board.horizontalCenter
-            y: board.y + mapRoot.boardHeight * 0.74
-            color: Qt.rgba(0, 0, 0, 0.20)
-            transform: [zoomTransform]
-        }
+        Canvas {
+            id: mapCanvas
+            width: (root.gridWidth + root.gridHeight) * root.tileW / 2 + root.tileW
+            height: (root.gridWidth + root.gridHeight) * root.tileH / 2 + root.tileH + 16
+            x: -width / 2
+            y: -height / 4
 
-        Item {
-            id: board
-            width: Math.max(mapRoot.tileW, mapRoot.boardWidth)
-            height: Math.max(mapRoot.tileH + 24, mapRoot.boardHeight)
-            anchors.horizontalCenter: parent.horizontalCenter
-            y: Math.max(76, (parent.height - height) * 0.24)
-            transform: [zoomTransform]
+            property int hoveredX: -1
+            property int hoveredY: -1
 
-            Repeater {
-                model: mapRoot.mapModel
+            onPaint: {
+                var ctx = getContext("2d")
+                ctx.clearRect(0, 0, width, height)
+                var ox = root.gridHeight * root.tileW / 2
+                var oy = 16
 
-                delegate: Item {
-                    id: cellItem
-                    required property var model
-
-                    x: (model.gridX - model.gridY) * mapRoot.tileW / 2 + board.width / 2 - mapRoot.tileW / 2
-                    y: (model.gridX + model.gridY) * mapRoot.tileH / 2
-                    z: model.gridX + model.gridY
-                    width: mapRoot.tileW
-                    height: mapRoot.tileH + 24
-
-                    FarmTile {
-                        anchors.fill: parent
-                        cellState: cellItem.model.state
-                        crop: cellItem.model.crop
-                        progress: cellItem.model.progress
-                        water: cellItem.model.water
-                        fertilized: cellItem.model.fertilized
-                        hasBug: cellItem.model.hasBug
-                        selected: mapRoot.selectedX === cellItem.model.gridX && mapRoot.selectedY === cellItem.model.gridY
-                        hovered: mapRoot.hoveredX === cellItem.model.gridX && mapRoot.hoveredY === cellItem.model.gridY
+                for (var gy = 0; gy < root.gridHeight; gy++) {
+                    for (var gx = 0; gx < root.gridWidth; gx++) {
+                        var sx = ox + (gx - gy) * root.tileW / 2
+                        var sy = oy + (gx + gy) * root.tileH / 2
+                        drawTile(ctx, sx, sy, gx, gy)
                     }
+                }
+            }
 
-                    MouseArea {
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
+            function drawTile(ctx, sx, sy, gx, gy) {
+                var cell = root.mapModel ? appVm.cellAt(gx, gy) : null
+                var state = cell ? cell.state : 0
+                var topColor = getTopColor(state, cell)
+                var leftColor = Qt.darker(topColor, 1.3)
+                var rightColor = Qt.darker(topColor, 1.15)
+                var tW = root.tileW
+                var tH = root.tileH
+                var depth = 18
+                var isHovered = (gx === hoveredX && gy === hoveredY)
 
-                        onEntered: mapRoot.updateHoveredCell(cellItem.model.gridX, cellItem.model.gridY)
-                        onExited: {
-                            if (mapRoot.hoveredX === cellItem.model.gridX &&
-                                    mapRoot.hoveredY === cellItem.model.gridY) {
-                                mapRoot.updateHoveredCell(-1, -1)
-                            }
+                // Top face
+                ctx.beginPath()
+                ctx.moveTo(sx + tW/2, sy)
+                ctx.lineTo(sx + tW, sy + tH/2)
+                ctx.lineTo(sx + tW/2, sy + tH)
+                ctx.lineTo(sx, sy + tH/2)
+                ctx.closePath()
+                ctx.fillStyle = topColor
+                ctx.fill()
+
+                // Left face
+                ctx.beginPath()
+                ctx.moveTo(sx, sy + tH/2)
+                ctx.lineTo(sx + tW/2, sy + tH)
+                ctx.lineTo(sx + tW/2, sy + tH + depth)
+                ctx.lineTo(sx, sy + tH/2 + depth)
+                ctx.closePath()
+                ctx.fillStyle = leftColor
+                ctx.fill()
+
+                // Right face
+                ctx.beginPath()
+                ctx.moveTo(sx + tW/2, sy + tH)
+                ctx.lineTo(sx + tW, sy + tH/2)
+                ctx.lineTo(sx + tW, sy + tH/2 + depth)
+                ctx.lineTo(sx + tW/2, sy + tH + depth)
+                ctx.closePath()
+                ctx.fillStyle = rightColor
+                ctx.fill()
+
+                // Hover highlight
+                if (isHovered) {
+                    ctx.beginPath()
+                    ctx.moveTo(sx + tW/2, sy)
+                    ctx.lineTo(sx + tW, sy + tH/2)
+                    ctx.lineTo(sx + tW/2, sy + tH)
+                    ctx.lineTo(sx, sy + tH/2)
+                    ctx.closePath()
+                    ctx.strokeStyle = "rgba(255,255,255,0.6)"
+                    ctx.lineWidth = 2
+                    ctx.stroke()
+                }
+
+                // Water overlay
+                if (cell && cell.water > 0.3) {
+                    ctx.beginPath()
+                    ctx.moveTo(sx + tW/2, sy)
+                    ctx.lineTo(sx + tW, sy + tH/2)
+                    ctx.lineTo(sx + tW/2, sy + tH)
+                    ctx.lineTo(sx, sy + tH/2)
+                    ctx.closePath()
+                    ctx.fillStyle = "rgba(90,175,207," + (cell.water * 0.2) + ")"
+                    ctx.fill()
+                }
+
+                // Crop indicator
+                if (cell && cell.crop > 0 && state >= 2) {
+                    drawCrop(ctx, sx + tW/2, sy + tH/2 - 4, cell)
+                }
+            }
+
+            function getTopColor(state, cell) {
+                switch (state) {
+                    case 0: return Theme.tileEmpty
+                    case 1: return Theme.tileTilled
+                    case 2: return Theme.tilePlanted
+                    case 3: return Theme.tileMature
+                    case 4: return Theme.tileBug
+                    default: return Theme.tileEmpty
+                }
+            }
+
+            function drawCrop(ctx, cx, cy, cell) {
+                var crops = ["", "🌾", "🥕", "🍅", "🌽", "🌻"]
+                var emoji = crops[cell.crop] || ""
+                var size = 8 + cell.progress * 10
+                ctx.font = Math.round(size) + "px serif"
+                ctx.textAlign = "center"
+                ctx.textBaseline = "middle"
+                ctx.fillText(emoji, cx, cy)
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                hoverEnabled: true
+                acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+
+                property real lastX: 0
+                property real lastY: 0
+                property bool panning: false
+
+                onPositionChanged: function(mouse) {
+                    if (panning) {
+                        root.panX += mouse.x - lastX
+                        root.panY += mouse.y - lastY
+                        lastX = mouse.x
+                        lastY = mouse.y
+                        return
+                    }
+                    var ox = root.gridHeight * root.tileW / 2
+                    var oy = 16
+                    var mx = mouse.x - ox
+                    var my = mouse.y - oy
+                    var gp = root.toGrid(mx, my)
+                    var gx = Math.round(gp.x)
+                    var gy = Math.round(gp.y)
+                    if (gx >= 0 && gx < root.gridWidth && gy >= 0 && gy < root.gridHeight) {
+                        if (mapCanvas.hoveredX !== gx || mapCanvas.hoveredY !== gy) {
+                            mapCanvas.hoveredX = gx
+                            mapCanvas.hoveredY = gy
+                            mapCanvas.requestPaint()
+                            root.cellHovered(gx, gy, mouse.x, mouse.y)
                         }
-                        onClicked: mapRoot.updateSelectedCell(cellItem.model.gridX, cellItem.model.gridY)
-                    }
-                }
-            }
-
-            DroneSprite {
-                id: droneSprite
-                x: (mapRoot.engine.droneX - mapRoot.engine.droneY) * mapRoot.tileW / 2 + board.width / 2 - width / 2
-                y: (mapRoot.engine.droneX + mapRoot.engine.droneY) * mapRoot.tileH / 2 - 18
-                z: 5000
-
-                Behavior on x {
-                    NumberAnimation {
-                        duration: 280
-                        easing.type: Easing.OutQuad
+                    } else {
+                        if (mapCanvas.hoveredX !== -1) {
+                            mapCanvas.hoveredX = -1
+                            mapCanvas.hoveredY = -1
+                            mapCanvas.requestPaint()
+                            root.cellExited()
+                        }
                     }
                 }
 
-                Behavior on y {
-                    NumberAnimation {
-                        duration: 280
-                        easing.type: Easing.OutQuad
+                onPressed: function(mouse) {
+                    if (mouse.button === Qt.MiddleButton) {
+                        panning = true
+                        lastX = mouse.x
+                        lastY = mouse.y
                     }
                 }
+
+                onReleased: function(mouse) {
+                    if (mouse.button === Qt.MiddleButton) {
+                        panning = false
+                    }
+                }
+
+                onClicked: function(mouse) {
+                    if (mouse.button === Qt.LeftButton && mapCanvas.hoveredX >= 0) {
+                        root.cellClicked(mapCanvas.hoveredX, mapCanvas.hoveredY)
+                    }
+                }
+
+                onWheel: function(wheel) {
+                    var delta = wheel.angleDelta.y > 0 ? 0.1 : -0.1
+                    root.zoomLevel = Math.max(0.5, Math.min(2.5, root.zoomLevel + delta))
+                }
+
+                onExited: {
+                    mapCanvas.hoveredX = -1
+                    mapCanvas.hoveredY = -1
+                    mapCanvas.requestPaint()
+                    root.cellExited()
+                }
             }
-        }
-    }
-
-    FloatingPanel {
-        anchors.left: parent.left
-        anchors.top: parent.top
-        anchors.margins: 12
-        width: 224
-        height: 106
-        title: "Field Scanner"
-        subtitle: "滚轮缩放，点击锁定地块"
-        accentColor: Theme.primaryGreen
-
-        Column {
-            anchors.fill: parent
-            spacing: 6
-
-            Text {
-                text: "缩放 " + mapRoot.zoomLevel.toFixed(2) + "x"
-                font.family: Theme.fontCode
-                font.pixelSize: 12
-                color: Theme.textPrimary
-            }
-
-            Text {
-                text: mapRoot.selectedX >= 0
-                      ? "选中 (%1, %2)".arg(mapRoot.selectedX).arg(mapRoot.selectedY)
-                      : "当前未锁定地块"
-                font.family: Theme.fontUI
-                font.pixelSize: 12
-                color: Theme.textSecondary
-            }
-
-            Text {
-                text: "无人机 (%1, %2)".arg(mapRoot.engine.droneX).arg(mapRoot.engine.droneY)
-                font.family: Theme.fontCode
-                font.pixelSize: 12
-                color: Theme.textPrimary
-            }
-        }
-    }
-
-    MiniMap {
-        anchors.top: parent.top
-        anchors.right: parent.right
-        anchors.margins: 12
-        engine: mapRoot.engine
-        mapModel: mapRoot.mapModel
-        focusX: mapRoot.selectedX >= 0 ? mapRoot.selectedX : mapRoot.hoveredX
-        focusY: mapRoot.selectedY >= 0 ? mapRoot.selectedY : mapRoot.hoveredY
-    }
-
-    CellTooltip {
-        anchors.left: parent.left
-        anchors.bottom: parent.bottom
-        anchors.margins: 12
-        cellX: mapRoot.selectedX >= 0 ? mapRoot.selectedX : mapRoot.hoveredX
-        cellY: mapRoot.selectedY >= 0 ? mapRoot.selectedY : mapRoot.hoveredY
-        cellData: mapRoot.selectedX >= 0 ? mapRoot.selectedCell : mapRoot.hoveredCell
-    }
-
-    WheelHandler {
-        onWheel: (event) => {
-            mapRoot.zoomLevel = Math.max(0.5, Math.min(2.0, mapRoot.zoomLevel + event.angleDelta.y * 0.001))
-        }
-    }
-
-    Behavior on zoomLevel {
-        NumberAnimation {
-            duration: 120
-            easing.type: Easing.OutQuad
         }
     }
 
     Connections {
-        target: mapRoot.mapModel
-        function onDataChanged() {
-            mapRoot.updateHoveredCell(mapRoot.hoveredX, mapRoot.hoveredY)
-            mapRoot.updateSelectedCell(mapRoot.selectedX, mapRoot.selectedY)
-        }
-        function onModelReset() {
-            mapRoot.updateHoveredCell(-1, -1)
-            mapRoot.updateSelectedCell(-1, -1)
-        }
+        target: farmMap
+        function onCellChanged() { mapCanvas.requestPaint() }
+        function onDimensionsChanged() { mapCanvas.requestPaint() }
     }
 }

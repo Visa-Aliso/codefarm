@@ -1,132 +1,78 @@
-pragma ComponentBehavior: Bound
 import QtQuick
+import CodeFarm
 
 Item {
-    id: drone
-    width: 54
-    height: 44
+    id: root
+    property int gridX: 0
+    property int gridY: 0
+    property real tileW: 64
+    property real tileH: 32
+    property real mapOffsetX: 0
+    property real mapOffsetY: 0
+    property int mapGridHeight: 1
 
-    y: hoverAnimation.running ? -1 : 0
+    width: 32
+    height: 32
 
-    SequentialAnimation on y {
-        id: hoverAnimation
+    x: {
+        var ox = mapGridHeight * tileW / 2
+        return mapOffsetX + ox + (gridX - gridY) * tileW / 2 + tileW/2 - width/2
+    }
+    y: {
+        var oy = 16
+        return mapOffsetY + oy + (gridX + gridY) * tileH / 2 - height + tileH/2 - floatOffset
+    }
+
+    property real floatOffset: 0
+
+    Behavior on x { SmoothedAnimation { velocity: 200 } }
+    Behavior on y { SmoothedAnimation { velocity: 200 } }
+
+    SequentialAnimation on floatOffset {
         loops: Animation.Infinite
-        NumberAnimation { to: -3; duration: 680; easing.type: Easing.InOutQuad }
-        NumberAnimation { to: 1; duration: 680; easing.type: Easing.InOutQuad }
+        NumberAnimation { from: 0; to: 4; duration: 1000; easing.type: Easing.InOutSine }
+        NumberAnimation { from: 4; to: 0; duration: 1000; easing.type: Easing.InOutSine }
     }
 
+    Canvas {
+        anchors.fill: parent
+        onPaint: {
+            var ctx = getContext("2d")
+            ctx.clearRect(0, 0, width, height)
+
+            // Body
+            ctx.fillStyle = "#E8E8E8"
+            ctx.beginPath()
+            ctx.roundedRect(8, 12, 16, 10, 3, 3)
+            ctx.fill()
+
+            // Rotors
+            ctx.fillStyle = "#555555"
+            ctx.fillRect(4, 10, 10, 2)
+            ctx.fillRect(18, 10, 10, 2)
+
+            // Rotor tips
+            ctx.fillStyle = "#333333"
+            ctx.beginPath()
+            ctx.arc(4, 11, 2, 0, Math.PI * 2)
+            ctx.arc(28, 11, 2, 0, Math.PI * 2)
+            ctx.fill()
+
+            // Light
+            ctx.fillStyle = "#4CAF50"
+            ctx.beginPath()
+            ctx.arc(16, 15, 2, 0, Math.PI * 2)
+            ctx.fill()
+        }
+    }
+
+    // Shadow below drone
     Rectangle {
+        width: 20
+        height: 8
+        radius: 4
+        color: Qt.rgba(0, 0, 0, 0.2)
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: parent.bottom
-        width: 28
-        height: 10
-        radius: 5
-        color: Qt.rgba(0, 0, 0, 0.18)
-        scale: 0.95
-    }
-
-    Item {
-        id: craft
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.verticalCenter: parent.verticalCenter
-        y: -3
-        width: 42
-        height: 28
-
-        Rectangle {
-            anchors.centerIn: parent
-            width: 34
-            height: 4
-            radius: 2
-            rotation: 25
-            color: "#5F6C73"
-        }
-
-        Rectangle {
-            anchors.centerIn: parent
-            width: 34
-            height: 4
-            radius: 2
-            rotation: -25
-            color: "#5F6C73"
-        }
-
-        Repeater {
-            model: 4
-
-            delegate: Item {
-                required property int index
-                width: 14
-                height: 14
-                x: index % 2 === 0 ? 1 : craft.width - width - 1
-                y: index < 2 ? 0 : craft.height - height
-
-                Item {
-                    anchors.fill: parent
-
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: 12
-                        height: 2
-                        radius: 1
-                        color: "#BFD0D5"
-                    }
-
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: 2
-                        height: 12
-                        radius: 1
-                        color: "#BFD0D5"
-                    }
-
-                    NumberAnimation on rotation {
-                        from: 0
-                        to: 360
-                        duration: 180
-                        loops: Animation.Infinite
-                    }
-                }
-
-                Rectangle {
-                    anchors.centerIn: parent
-                    width: 5
-                    height: 5
-                    radius: 2.5
-                    color: "#4C5A61"
-                }
-            }
-        }
-
-        Rectangle {
-            anchors.centerIn: parent
-            width: 18
-            height: 14
-            radius: 7
-            color: "#D79C48"
-            border.width: 1
-            border.color: "#F5D7A0"
-        }
-
-        Rectangle {
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.verticalCenterOffset: -4
-            width: 22
-            height: 10
-            radius: 5
-            color: "#33454D"
-            border.width: 1
-            border.color: "#75858B"
-        }
-
-        Rectangle {
-            anchors.horizontalCenter: parent.horizontalCenter
-            y: 7
-            width: 10
-            height: 4
-            radius: 2
-            color: "#EAE1C9"
-        }
+        y: parent.height + root.floatOffset
     }
 }
