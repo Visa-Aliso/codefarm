@@ -13,7 +13,14 @@ find_package(Qt6 6.4 REQUIRED COMPONENTS
 )
 
 find_package(Python3 QUIET COMPONENTS Interpreter Development)
-find_package(pybind11 QUIET)
+
+# 使用项目内嵌的 pybind11（纯头文件库）
+if(EXISTS "${CMAKE_SOURCE_DIR}/third_party/pybind11")
+    set(pybind11_FOUND TRUE)
+    set(pybind11_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/third_party")
+else()
+    find_package(pybind11 QUIET)
+endif()
 
 qt_standard_project_setup()
 
@@ -102,7 +109,15 @@ if(Python3_FOUND)
 endif()
 
 if(pybind11_FOUND)
-    target_link_libraries(codefarm PRIVATE pybind11::embed)
+    if(TARGET pybind11::embed)
+        target_link_libraries(codefarm PRIVATE pybind11::embed)
+    else()
+        # 使用内嵌的 pybind11 头文件
+        target_include_directories(codefarm PRIVATE ${pybind11_INCLUDE_DIRS})
+        if(Python3_FOUND)
+            target_link_libraries(codefarm PRIVATE Python3::Python)
+        endif()
+    endif()
     target_compile_definitions(codefarm PRIVATE HAS_PYBIND11)
 endif()
 
