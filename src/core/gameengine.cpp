@@ -46,7 +46,17 @@ GameEngine::GameEngine(QObject *parent)
         state_ = Error;
         emit stateChanged();
         emit errorOccurred(msg, line);
-        emit logMessage(QStringLiteral("脚本错误: %1").arg(msg), QStringLiteral("#D94F4F"));
+        // Extract the last non-empty line of the traceback for the console
+        // so the status bar doesn't overflow with multi-line error text.
+        QString lastLine = msg;
+        int idx = msg.lastIndexOf('\n');
+        if (idx >= 0) {
+            lastLine = msg.mid(idx + 1).trimmed();
+            if (lastLine.isEmpty()) {
+                lastLine = msg.section('\n', 0, 0).trimmed();
+            }
+        }
+        emit logMessage(QStringLiteral("脚本错误: %1").arg(lastLine), QStringLiteral("#D94F4F"));
     });
 }
 
@@ -133,7 +143,10 @@ void GameEngine::loadScript(const QString &code) {
 }
 
 void GameEngine::run() {
-    if (state_ == Idle) {
+    if (state_ == Idle || state_ == Error) {
+        map_->resetToPreset();
+        drone_->reset(currentStartX_, currentStartY_);
+        goals_->reset();
         if (!executor_->startScript()) {
             return;
         }
@@ -152,7 +165,10 @@ void GameEngine::pause() {
 }
 
 void GameEngine::stepOnce() {
-    if (state_ == Idle) {
+    if (state_ == Idle || state_ == Error) {
+        map_->resetToPreset();
+        drone_->reset(currentStartX_, currentStartY_);
+        goals_->reset();
         if (!executor_->startScript()) {
             return;
         }
@@ -208,7 +224,10 @@ void GameEngine::onTick() {
         return;
     }
 
-    map_->tickUpdate(currentBugProbability_);
+    {
+        std::lock_guard<std::mutex> lock(executor_->tickMutex());
+        map_->tickUpdate(currentBugProbability_);
+    }
     const int elapsedSec = timeElapsed();
     goals_->checkAll(elapsedSec);
     executor_->finishTick();

@@ -8,24 +8,28 @@ Rectangle {
     height: parent ? parent.height : 0
     color: Theme.bgMain
 
-    // Top bar
+    // Marker so the global "?" button can hide itself on this page
+    property bool isHelpPage: true
+
+    // Back button (matches LevelSelect style)
     Rectangle {
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.topMargin: 12
+        anchors.leftMargin: 16
+        z: 100
+        width: 32; height: 32; radius: 6
+        color: backMa.containsMouse ? Theme.btnGreenHover : Theme.btnGreen
+        Text { anchors.centerIn: parent; text: "←"; color: "white"; font.pixelSize: 16; font.weight: Font.Bold }
+        MouseArea { id: backMa; anchors.fill: parent; hoverEnabled: true; onClicked: navigator.pop() }
+    }
+
+    // Top bar (keeps geometry for Flickable anchoring + centered title)
+    Item {
         id: topBar
         width: parent.width
-        height: 48
-        color: Qt.rgba(0,0,0,0.2)
+        height: 56
         z: 10
-
-        Text {
-            anchors.left: parent.left
-            anchors.leftMargin: 20
-            anchors.verticalCenter: parent.verticalCenter
-            text: "←  返回"
-            color: backMa.containsMouse ? Theme.textLight : Theme.textDim
-            font.family: Theme.fontUI
-            font.pixelSize: 14
-            MouseArea { id: backMa; anchors.fill: parent; anchors.margins: -8; hoverEnabled: true; onClicked: navigator.pop() }
-        }
 
         Text {
             anchors.centerIn: parent
@@ -68,7 +72,7 @@ Rectangle {
             // Section 3: Code Editor
             HelpSection {
                 title: "代码编辑器"
-                content: "游戏界面中的深色浮动窗口就是代码编辑器。\n\n标题栏左侧按钮：\n  ▶ — 运行代码（空闲时显示）\n  ⏸ — 暂停执行（运行时显示）\n  ■ — 停止并重置关卡（运行时显示）\n\n标题栏右侧按钮：\n  ─ — 最小化/还原编辑器\n\n状态栏（底部）显示当前状态：\n  Idle（空闲）、Running（运行中）、Paused（暂停）、Error（错误）\n\n编辑器支持 Python 语法高亮，当前执行行会以绿色标记。\n游戏界面右上角 ? 按钮可打开关卡提示窗口，包含参考答案。"
+                content: "游戏界面中的深色浮动窗口就是代码编辑器。\n\n标题栏左侧按钮：\n  ▶ — 运行代码（空闲时显示）\n  ⏸ — 暂停执行（运行时显示）\n  ■ — 停止并重置关卡（运行时显示）\n\n标题栏右侧按钮：\n  ↺ — 载入本关教程代码（一键填入编辑器，无需复制粘贴）\n  ─ — 最小化/还原编辑器\n\n状态栏（底部）显示当前状态：\n  Idle（空闲）、Running（运行中）、Paused（暂停）、Error（错误）\n\n编辑器支持 Python 语法高亮。\n游戏界面右上角 ? 按钮可打开关卡提示窗口，包含本关新函数、新语法、新作物的说明和通关目标。"
             }
 
             // Section 4: Teaching Roadmap

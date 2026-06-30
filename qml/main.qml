@@ -38,31 +38,36 @@ Window {
         id: windowControls
         anchors.top: parent.top
         anchors.right: parent.right
-        anchors.topMargin: 8
+        anchors.topMargin: 12
         anchors.rightMargin: 12
         z: 10000
         spacing: 6
 
         Rectangle {
-            width: 30; height: 30; radius: 6
+            width: 32; height: 32; radius: 6
             color: helpBtnMa.containsMouse ? Theme.btnGreenHover : Theme.btnGreen
             visible: navigator.depth >= 2
-            Text { anchors.centerIn: parent; text: "?"; color: "white"; font.pixelSize: 14; font.weight: Font.Bold }
+                    && !(navigator.currentItem && (navigator.currentItem.isHelpPage || navigator.currentItem.isSettingsPage))
+            Text { anchors.centerIn: parent; text: "?"; color: "white"; font.pixelSize: 16; font.weight: Font.Bold }
             MouseArea { id: helpBtnMa; anchors.fill: parent; hoverEnabled: true
                 onClicked: {
                     var gv = navigator.currentItem
-                    if (gv && gv.toggleHint) gv.toggleHint()
+                    if (gv && gv.toggleHint) {
+                        gv.toggleHint()
+                    } else {
+                        navigator.push(helpPage)
+                    }
                 }
             }
         }
         Rectangle {
-            width: 30; height: 30; radius: 6
+            width: 32; height: 32; radius: 6
             color: minMa.containsMouse ? Theme.btnGreenHover : Theme.btnGreen
-            Text { anchors.centerIn: parent; text: "─"; color: "white"; font.pixelSize: 13; font.weight: Font.Bold }
+            Text { anchors.centerIn: parent; text: "─"; color: "white"; font.pixelSize: 16; font.weight: Font.Bold }
             MouseArea { id: minMa; anchors.fill: parent; hoverEnabled: true; onClicked: window.showMinimized() }
         }
         Rectangle {
-            width: 30; height: 30; radius: 6
+            width: 32; height: 32; radius: 6
             color: closeMa.containsMouse ? "#8B3030" : Theme.btnGreen
             Text { anchors.centerIn: parent; text: "×"; color: "white"; font.pixelSize: 16; font.weight: Font.Bold }
             MouseArea { id: closeMa; anchors.fill: parent; hoverEnabled: true; onClicked: Qt.quit() }
@@ -92,4 +97,5 @@ Window {
     Component { id: levelSelectPage; LevelSelect {} }
     Component { id: gameViewPage; GameView {} }
     Component { id: helpPage; HelpPage {} }
+    Component { id: settingsPage; SettingsPage {} }
 }

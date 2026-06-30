@@ -3,6 +3,7 @@
 #include <QMetaObject>
 #include <QStringList>
 #include <QVariant>
+#include <QRegularExpression>
 
 #include "core/cell.h"
 #include "core/drone.h"
@@ -43,7 +44,15 @@ std::pair<QString, int> extractPythonError(const py::error_already_set &err) {
     // Only use err.what() — a pure C++ call that never touches Python objects.
     // Accessing err.type()/err.value()/err.trace() can SIGSEGV when pybind11
     // converts a C++ exception to a Python exception (invalid object state).
-    return {QString::fromStdString(err.what()), 0};
+    const QString what = QString::fromStdString(err.what());
+    // Extract the last "line N" occurrence (innermost frame) from the message.
+    static const QRegularExpression re(QStringLiteral("line (\\d+)"));
+    auto it = re.globalMatch(what);
+    int line = 0;
+    while (it.hasNext()) {
+        line = it.next().captured(1).toInt();
+    }
+    return {what, line};
 }
 
 py::object toPythonObject(const QVariant &value) {
@@ -167,6 +176,10 @@ bool PythonExecutor::startScript() {
     // Normalize tab characters to spaces to prevent TabError
     currentScript_ = normalizeIndentation(currentScript_);
 
+    // Validate syntax on the main thread before spawning the worker. This
+    // catches syntax errors early (with a clean error_already_set that is
+    // safe to inspect) rather than letting the worker thread hit them while
+    // holding the GIL, which causes GIL-state corruption on Python 3.14.
     try {
         py::gil_scoped_acquire gil;
         py::module_::import("builtins").attr("compile")(
@@ -177,6 +190,70 @@ bool PythonExecutor::startScript() {
         const auto [message, line] = extractPythonError(err);
         emit errorOccurred(message, line);
         return false;
+    }
+
+    // AST-based syntax enforcement: check that the script only uses syntax
+    // constructs allowed by the current level's allowedSyntax set.
+    if (!allowedSyntax_.isEmpty()) {
+        try {
+            py::gil_scoped_acquire gil;
+            py::module_ astModule = py::module_::import("ast");
+            py::object tree = astModule.attr("parse")(currentScript_.toStdString());
+
+            // Map AST node types to allowedSyntax keys, then check.
+            // We walk the tree via a Python helper that returns a set of
+            // syntax-feature strings found in the AST.
+            py::dict checkGlobals;
+            checkGlobals[py::str("tree")] = tree;
+            py::str checkScript(
+                "import ast\n"
+                "found = set()\n"
+                "for node in ast.walk(tree):\n"
+                "    if isinstance(node, ast.For): found.add('for')\n"
+                "    elif isinstance(node, ast.While): found.add('while')\n"
+                "    elif isinstance(node, ast.If):\n"
+                "        found.add('if')\n"
+                "        if node.orelse: found.add('else')\n"
+                "    elif isinstance(node, ast.FunctionDef): found.add('def')\n"
+                "    elif isinstance(node, ast.Assign): found.add('assign')\n"
+                "    elif isinstance(node, ast.Break): found.add('break')\n"
+                "    elif isinstance(node, ast.Continue): found.add('continue')\n"
+                "    elif isinstance(node, ast.Return): found.add('return')\n"
+                "    elif isinstance(node, ast.BoolOp):\n"
+                "        if isinstance(node.op, ast.And): found.add('and')\n"
+                "        elif isinstance(node.op, ast.Or): found.add('or')\n"
+                "    elif isinstance(node, ast.UnaryOp):\n"
+                "        if isinstance(node.op, ast.Not): found.add('not')\n"
+            );
+            py::module_::import("builtins").attr("exec")(checkScript, checkGlobals, checkGlobals);
+            py::set foundSet = checkGlobals[py::str("found")];
+
+            for (auto item : foundSet) {
+                QString key = QString::fromStdString(py::str(item));
+                // "expr", "call", "in", "range" are always allowed — skip.
+                if (key == "expr" || key == "call" || key == "in" || key == "range") {
+                    continue;
+                }
+                if (!allowedSyntax_.contains(key)) {
+                    static const QHash<QString, QString> labels = {
+                        {"for", "for 循环"}, {"while", "while 循环"},
+                        {"if", "if 条件"}, {"else", "else 分支"},
+                        {"def", "函数定义"}, {"assign", "变量赋值"},
+                        {"break", "break"}, {"continue", "continue"},
+                        {"return", "return"}, {"and", "and 运算"},
+                        {"or", "or 运算"}, {"not", "not 运算"}
+                    };
+                    QString label = labels.value(key, key);
+                    emit errorOccurred(
+                        QStringLiteral("当前关卡不允许使用 %1").arg(label), 0);
+                    return false;
+                }
+            }
+        } catch (const py::error_already_set &err) {
+            const auto [message, line] = extractPythonError(err);
+            emit errorOccurred(message, line);
+            return false;
+        }
     }
 
     {
@@ -499,24 +576,28 @@ bool PythonExecutor::startWorkerThread() {
                 requireFunction(QStringLiteral("get_pos"));
                 reportCurrentLine();
                 emit apiCalled(QStringLiteral("get_pos"), true);
+                std::lock_guard<std::mutex> lock(mutex_);
                 return py::make_tuple(drone_->x(), drone_->y());
             });
             globals[py::str("get_map_size")] = py::cpp_function([this, &requireFunction, &reportCurrentLine]() {
                 requireFunction(QStringLiteral("get_map_size"));
                 reportCurrentLine();
                 emit apiCalled(QStringLiteral("get_map_size"), true);
+                std::lock_guard<std::mutex> lock(mutex_);
                 return py::make_tuple(map_->gridWidth(), map_->gridHeight());
             });
             globals[py::str("get_current")] = py::cpp_function([this, &requireFunction, &reportCurrentLine]() {
                 requireFunction(QStringLiteral("get_current"));
                 reportCurrentLine();
                 emit apiCalled(QStringLiteral("get_current"), true);
+                std::lock_guard<std::mutex> lock(mutex_);
                 return toPythonObject(currentCellInfo());
             });
             globals[py::str("get_goals")] = py::cpp_function([this, &requireFunction, &reportCurrentLine]() {
                 requireFunction(QStringLiteral("get_goals"));
                 reportCurrentLine();
                 emit apiCalled(QStringLiteral("get_goals"), true);
+                std::lock_guard<std::mutex> lock(mutex_);
                 return toPythonObject(goalsInfo());
             });
             globals[py::str("get_tick")] = py::cpp_function([this, &requireFunction, &reportCurrentLine]() {
@@ -529,7 +610,11 @@ bool PythonExecutor::startWorkerThread() {
             globals[py::str("debug")] = py::cpp_function([this, &requireFunction, &reportCurrentLine]() {
                 requireFunction(QStringLiteral("debug"));
                 reportCurrentLine();
-                const QVariantMap cell = currentCellInfo();
+                QVariantMap cell;
+                {
+                    std::lock_guard<std::mutex> lock(mutex_);
+                    cell = currentCellInfo();
+                }
                 emit apiCalled(QStringLiteral("debug"), true);
                 emit printOutput(
                     QStringLiteral("cell=(%1,%2) state=%3 crop=%4 water=%5 progress=%6 bug=%7")
@@ -543,6 +628,14 @@ bool PythonExecutor::startWorkerThread() {
                                                                             : QStringLiteral("False")));
                 return toPythonObject(cell);
             });
+            // NOTE: Line tracing via PyEval_SetTrace would go here, but
+            // Python 3.14's opaque PyFrameObject + GIL interaction with
+            // pybind11 causes a segfault on GIL release at lambda exit.
+            // The lineExecuting signal is declared and wired through to the
+            // UI but currently never emitted. Revisit with a 3.14-safe
+            // approach (e.g. sys.settrace in pure Python with a wrapper
+            // that calls back via a C extension capsule).
+
             try {
                 py::object code = builtinsModule.attr("compile")(
                     script.toStdString(),

@@ -64,12 +64,12 @@ Rectangle {
                 onClicked: navigator.push(levelSelectPage)
             }
             MenuButton {
-                text: "↺  新游戏"
-                onClicked: { appVm.resetAllProgress(); appVm.openLevel(1); navigator.push(gameViewPage) }
-            }
-            MenuButton {
                 text: "?  帮助"
                 onClicked: navigator.push(helpPage)
+            }
+            MenuButton {
+                text: "⚙  设置"
+                onClicked: navigator.push(settingsPage)
             }
             MenuButton {
                 text: "✕  退出"

@@ -5,6 +5,8 @@
 #include <QVariantList>
 #include <QVariantMap>
 
+class QTimer;
+
 class FarmMap;
 class GameEngine;
 class LevelManager;
@@ -27,9 +29,9 @@ class AppViewModel : public QObject {
     Q_PROPERTY(int droneY READ droneY NOTIFY runtimeChanged)
     Q_PROPERTY(int totalStars READ totalStars NOTIFY levelsChanged)
     Q_PROPERTY(int completedCount READ completedCount NOTIFY levelsChanged)
-    Q_PROPERTY(bool particlesEnabled READ particlesEnabled WRITE setParticlesEnabled NOTIFY uiPreferencesChanged)
-    Q_PROPERTY(float motionScale READ motionScale WRITE setMotionScale NOTIFY uiPreferencesChanged)
-    Q_PROPERTY(int editorFontSize READ editorFontSize WRITE setEditorFontSize NOTIFY uiPreferencesChanged)
+    Q_PROPERTY(float runSpeed READ runSpeed WRITE setRunSpeed NOTIFY uiPreferencesChanged)
+    Q_PROPERTY(bool bgAnimations READ bgAnimations WRITE setBgAnimations NOTIFY uiPreferencesChanged)
+    Q_PROPERTY(bool autoShowHint READ autoShowHint WRITE setAutoShowHint NOTIFY uiPreferencesChanged)
 
 public:
     explicit AppViewModel(GameEngine *engine,
@@ -52,9 +54,9 @@ public:
     int droneY() const;
     int totalStars() const;
     int completedCount() const;
-    bool particlesEnabled() const { return particlesEnabled_; }
-    float motionScale() const { return motionScale_; }
-    int editorFontSize() const { return editorFontSize_; }
+    float runSpeed() const { return runSpeed_; }
+    bool bgAnimations() const { return bgAnimations_; }
+    bool autoShowHint() const { return autoShowHint_; }
 
     Q_INVOKABLE void openLevel(int levelId);
     Q_INVOKABLE void runOrPause();
@@ -72,9 +74,9 @@ public:
     Q_INVOKABLE void resetAllProgress();
 
 public slots:
-    void setParticlesEnabled(bool enabled);
-    void setMotionScale(float scale);
-    void setEditorFontSize(int size);
+    void setRunSpeed(float speed);
+    void setBgAnimations(bool enabled);
+    void setAutoShowHint(bool enabled);
 
 signals:
     void levelsChanged();
@@ -104,9 +106,10 @@ private:
     QString scriptText_;
     int executingLine_ = -1;
     QString consoleLine_ = QStringLiteral("系统就绪，等待任务。");
-    bool particlesEnabled_ = true;
-    float motionScale_ = 1.0f;
-    int editorFontSize_ = 14;
+    float runSpeed_ = 1.0f;
+    bool bgAnimations_ = true;
+    bool autoShowHint_ = false;
+    QTimer *saveTimer_ = nullptr;
 };
 
 #endif // APPVIEWMODEL_H

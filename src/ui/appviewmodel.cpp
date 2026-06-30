@@ -6,6 +6,7 @@
 #include "save/savemanager.h"
 
 #include <QSettings>
+#include <QTimer>
 
 AppViewModel::AppViewModel(GameEngine *engine,
                            LevelManager *levelManager,
@@ -17,6 +18,15 @@ AppViewModel::AppViewModel(GameEngine *engine,
     , saveManager_(saveManager)
 {
     loadPreferences();
+
+    saveTimer_ = new QTimer(this);
+    saveTimer_->setSingleShot(true);
+    saveTimer_->setInterval(500);
+    connect(saveTimer_, &QTimer::timeout, this, [this]() {
+        if (saveManager_ && activeLevelId_ > 0) {
+            saveManager_->saveScript(activeLevelId_, scriptText_);
+        }
+    });
 
     connect(levelManager_, &LevelManager::progressChanged, this, &AppViewModel::levelsChanged);
     connect(levelManager_, &LevelManager::levelUnlocked, this, &AppViewModel::levelsChanged);
@@ -105,6 +115,13 @@ void AppViewModel::openLevel(int levelId) {
     if (!engine_ || !levelManager_) {
         return;
     }
+    // Flush any pending debounced save for the previous level before switching.
+    if (saveTimer_ && saveTimer_->isActive()) {
+        saveTimer_->stop();
+        if (saveManager_ && activeLevelId_ > 0) {
+            saveManager_->saveScript(activeLevelId_, scriptText_);
+        }
+    }
     engine_->loadLevel(levelId);
     activeLevelId_ = levelId;
     scriptText_.clear();
@@ -119,12 +136,20 @@ void AppViewModel::runOrPause() {
         engine_->pause();
         return;
     }
+    if (scriptText_.trimmed().isEmpty()) {
+        setConsoleLine(QStringLiteral("请先在编辑器中编写代码"));
+        return;
+    }
     engine_->loadScript(scriptText_);
     engine_->run();
 }
 
 void AppViewModel::stepOnce() {
     if (!engine_) {
+        return;
+    }
+    if (scriptText_.trimmed().isEmpty()) {
+        setConsoleLine(QStringLiteral("请先在编辑器中编写代码"));
         return;
     }
     engine_->loadScript(scriptText_);
@@ -157,7 +182,9 @@ void AppViewModel::saveScript(const QString &text) {
     }
     scriptText_ = text;
     if (saveManager_ && activeLevelId_ > 0) {
-        saveManager_->saveScript(activeLevelId_, text);
+        // Debounce disk writes: restart the timer so we only write once the
+        // user stops typing for 500ms.
+        saveTimer_->start();
     }
     if (engine_ && engine_->currentLevelId() == activeLevelId_) {
         engine_->loadScript(text);
@@ -183,9 +210,12 @@ int AppViewModel::nextUnlockedLevel() const {
 }
 
 void AppViewModel::resetUiPreferences() {
-    particlesEnabled_ = true;
-    motionScale_ = 1.0f;
-    editorFontSize_ = 14;
+    runSpeed_ = 1.0f;
+    bgAnimations_ = true;
+    autoShowHint_ = false;
+    if (engine_) {
+        engine_->setSpeed(runSpeed_);
+    }
     savePreferences();
     emit uiPreferencesChanged();
 }
@@ -232,52 +262,60 @@ QString AppViewModel::failureHint(const QString &reason) const {
     return QStringLiteral("检查控制台日志、当前执行行和关卡目标。");
 }
 
-void AppViewModel::setParticlesEnabled(bool enabled) {
-    if (particlesEnabled_ == enabled) {
+void AppViewModel::setRunSpeed(float speed) {
+    const float next = qBound(0.1f, speed, 5.0f);
+    if (qFuzzyCompare(runSpeed_, next)) {
         return;
     }
-    particlesEnabled_ = enabled;
+    runSpeed_ = next;
+    if (engine_) {
+        engine_->setSpeed(next);
+    }
     savePreferences();
     emit uiPreferencesChanged();
 }
 
-void AppViewModel::setMotionScale(float scale) {
-    const float next = qBound(0.0f, scale, 1.5f);
-    if (qFuzzyCompare(motionScale_, next)) {
+void AppViewModel::setBgAnimations(bool enabled) {
+    if (bgAnimations_ == enabled) {
         return;
     }
-    motionScale_ = next;
+    bgAnimations_ = enabled;
     savePreferences();
     emit uiPreferencesChanged();
 }
 
-void AppViewModel::setEditorFontSize(int size) {
-    const int next = qBound(12, size, 20);
-    if (editorFontSize_ == next) {
+void AppViewModel::setAutoShowHint(bool enabled) {
+    if (autoShowHint_ == enabled) {
         return;
     }
-    editorFontSize_ = next;
+    autoShowHint_ = enabled;
     savePreferences();
     emit uiPreferencesChanged();
 }
 
 void AppViewModel::loadPreferences() {
     QSettings settings;
-    particlesEnabled_ = settings.value(QStringLiteral("ui/particlesEnabled"), true).toBool();
-    motionScale_ = settings.value(QStringLiteral("ui/motionScale"), 1.0).toFloat();
-    editorFontSize_ = settings.value(QStringLiteral("ui/editorFontSize"), 14).toInt();
+    runSpeed_ = settings.value(QStringLiteral("ui/runSpeed"), 1.0).toFloat();
+    bgAnimations_ = settings.value(QStringLiteral("ui/bgAnimations"), true).toBool();
+    autoShowHint_ = settings.value(QStringLiteral("ui/autoShowHint"), false).toBool();
 }
 
 void AppViewModel::savePreferences() const {
     QSettings settings;
-    settings.setValue(QStringLiteral("ui/particlesEnabled"), particlesEnabled_);
-    settings.setValue(QStringLiteral("ui/motionScale"), motionScale_);
-    settings.setValue(QStringLiteral("ui/editorFontSize"), editorFontSize_);
+    settings.setValue(QStringLiteral("ui/runSpeed"), runSpeed_);
+    settings.setValue(QStringLiteral("ui/bgAnimations"), bgAnimations_);
+    settings.setValue(QStringLiteral("ui/autoShowHint"), autoShowHint_);
 }
 
 void AppViewModel::refreshScriptFromStore() {
     if (!engine_ || !saveManager_ || activeLevelId_ <= 0) {
         return;
+    }
+    // Flush any pending debounced save so we don't overwrite the stored script
+    // with stale content right before reading it.
+    if (saveTimer_ && saveTimer_->isActive()) {
+        saveTimer_->stop();
+        saveManager_->saveScript(activeLevelId_, scriptText_);
     }
     const QString saved = saveManager_->loadScript(activeLevelId_);
     const QString next = saved;

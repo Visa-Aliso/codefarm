@@ -22,7 +22,7 @@ Rectangle {
 
     // ---- Animated background clouds (large, staggered, always visible) ----
     Repeater {
-        model: [
+        model: appVm.bgAnimations ? [
             { w: 260, h: 90,  y: 15,  speed: 90000,  stagger: 0    },
             { w: 200, h: 70,  y: 50,  speed: 110000, stagger: 0.15 },
             { w: 300, h: 105, y: 90,  speed: 75000,  stagger: 0.3  },
@@ -35,7 +35,7 @@ Rectangle {
             { w: 190, h: 68,  y: 140, speed: 115000, stagger: 0.55 },
             { w: 230, h: 82,  y: 55,  speed: 105000, stagger: 0.9  },
             { w: 160, h: 56,  y: 120, speed: 125000, stagger: 0.2  }
-        ]
+        ] : []
         delegate: Item {
             y: modelData.y
             width: modelData.w
@@ -179,6 +179,7 @@ Rectangle {
         onPauseClicked: appVm.runOrPause()
         onStopClicked: appVm.resetLevel()
         onStepClicked: appVm.stepOnce()
+        onLoadTutorialClicked: appVm.resetScriptToTutorial()
         onResetClicked: {
             codeEditor.x = root.width - codeEditor.width - 24
             codeEditor.y = 60
@@ -188,7 +189,7 @@ Rectangle {
         onCloseRequested: codeEditor.visible = false
     }
 
-    // Hint/tutorial window (draggable, hidden by default)
+    // Hint/tutorial window (draggable, hidden by default unless autoShowHint is on)
     Item {
         id: hintWindow
         x: 56
@@ -196,7 +197,7 @@ Rectangle {
         width: 280
         height: Math.min(hintCol.height + 42, root.height - 80)
         z: 95
-        visible: false
+        visible: appVm.autoShowHint
 
         Rectangle {
             anchors.fill: parent
@@ -233,7 +234,7 @@ Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
                     width: 26; height: 26; radius: 5
                     color: hintMinMa.containsMouse ? Theme.btnGreenHover : Theme.btnGreen
-                    Text { anchors.centerIn: parent; text: "─"; color: "white"; font.pixelSize: 11; font.weight: Font.Bold }
+                    Text { anchors.centerIn: parent; text: "─"; color: "white"; font.pixelSize: 14; font.weight: Font.Bold }
                     MouseArea { id: hintMinMa; anchors.fill: parent; hoverEnabled: true
                         onClicked: hintWindow.visible = false
                     }
@@ -393,38 +394,6 @@ Rectangle {
 
                     Rectangle { width: parent.width; height: 1; color: Theme.borderDim; visible: getHintNewContent().newFunctions && getHintNewContent().newFunctions.length > 0 || getHintNewContent().newSyntax && getHintNewContent().newSyntax.length > 0 || getHintNewContent().newCrops && getHintNewContent().newCrops.length > 0 }
 
-                    // Answer section
-                    Row {
-                        spacing: 8
-                        Text { text: "参考答案："; color: Theme.textDim; font.family: Theme.fontCode; font.pixelSize: 11; anchors.verticalCenter: parent.verticalCenter }
-                        Rectangle {
-                            width: copyLabel.implicitWidth + 12; height: 20; radius: 4
-                            color: copyMa.containsMouse ? Theme.btnGreenHover : Theme.btnGreen
-                            anchors.verticalCenter: parent.verticalCenter
-                            Text { id: copyLabel; anchors.centerIn: parent; text: "复制代码"; color: "white"; font.pixelSize: 10 }
-                            MouseArea { id: copyMa; anchors.fill: parent; hoverEnabled: true
-                                onClicked: { answerEdit.selectAll(); answerEdit.copy(); answerEdit.deselect() }
-                            }
-                        }
-                    }
-                    Rectangle {
-                        width: parent.width
-                        height: Math.max(answerEdit.contentHeight + 16, 40)
-                        radius: 4; color: Qt.rgba(0,0,0,0.3)
-                        TextEdit {
-                            id: answerEdit
-                            anchors.left: parent.left; anchors.right: parent.right; anchors.margins: 8
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: level.tutorialCode || ""
-                            color: Theme.textLight
-                            font.family: Theme.fontCode; font.pixelSize: 11
-                            wrapMode: TextEdit.WordWrap
-                            readOnly: true
-                            selectByMouse: true
-                            selectionColor: "#3A5A8C"
-                        }
-                    }
-
                     Item { width: 1; height: 8 }
                 }
             }
@@ -488,11 +457,13 @@ Rectangle {
             if (root.isQuitting) return
             resultOverlay.stars = stars
             resultOverlay.visible = true
+            audioManager.playSfx("clear")
         }
         function onLevelFailed(reason) {
             if (root.isQuitting) return
             failOverlay.reason = reason
             failOverlay.visible = true
+            audioManager.playSfx("fail")
         }
     }
 }

@@ -75,7 +75,7 @@ void LevelManager::loadLevels() {
 
         l.bugProbability = 0.0f;
         l.allowedFunctions = {"move","till","plant","harvest","water","wait","get_pos","get_map_size"};
-        l.allowedSyntax = {"expr","call","for","in","range"};
+        l.allowedSyntax = {"expr","call","if","for","in","range"};
         l.allowedCrops = {"wheat"};
         l.tutorialCode = u"# 2×2 网格耕种\nfor row in range(2):\n    for col in range(2):\n        till()\n        plant(\"wheat\")\n        water()\n        if col < 1:\n            move(\"right\")\n    if row < 1:\n        move(\"down\")\n        move(\"left\")\n\n# 回到起点（先左再上）\nmove(\"left\")\nmove(\"up\")\n\n# 等待成熟\nfor i in range(6):\n    wait()\n\n# 收割\nfor row in range(2):\n    for col in range(2):\n        harvest()\n        if col < 1:\n            move(\"right\")\n    if row < 1:\n        move(\"down\")\n        move(\"left\")\n"_s;
         l.presetCells = {};
@@ -103,7 +103,7 @@ void LevelManager::loadLevels() {
 
         l.bugProbability = 0.0f;
         l.allowedFunctions = {"move","till","plant","harvest","water","wait","get_pos","get_map_size","get_current"};
-        l.allowedSyntax = {"expr","call","assign","if","for","in","range","while"};
+        l.allowedSyntax = {"expr","call","assign","if","for","in","range","while","def"};
         l.allowedCrops = {"wheat"};
         l.tutorialCode = u"# 用循环耕种，绕开岩石\n# 岩石在 (1,1)，即正中间\n# 用 get_current() 检查格子状态\n\ndef go_home():\n    while get_pos()[0] > 0:\n        move(\"left\")\n    while get_pos()[1] > 0:\n        move(\"up\")\n\nfor row in range(3):\n    go_home()\n    for i in range(row):\n        move(\"down\")\n    for col in range(3):\n        cell = get_current()\n        if cell[\"state\"] == \"empty\":\n            till()\n            plant(\"wheat\")\n            water()\n        if col < 2:\n            move(\"right\")\n\ngo_home()\n\n# 等待\nfor i in range(6):\n    wait()\n\n# 收割\nfor row in range(3):\n    go_home()\n    for i in range(row):\n        move(\"down\")\n    for col in range(3):\n        cell = get_current()\n        if cell[\"state\"] == \"mature\":\n            harvest()\n        if col < 2:\n            move(\"right\")\n"_s;
         l.presetCells = {makeRock(2, 2)};
@@ -127,7 +127,7 @@ void LevelManager::loadLevels() {
 
         l.bugProbability = 0.0f;
         l.allowedFunctions = {"move","till","plant","harvest","water","wait","get_pos","get_map_size","get_current"};
-        l.allowedSyntax = {"expr","call","assign","if","for","in","range"};
+        l.allowedSyntax = {"expr","call","assign","if","for","in","range","def","while","else"};
         l.allowedCrops = {"wheat","carrot"};
         l.tutorialCode = u"# 胡萝卜需要精准浇水\n# 浇两次水刚好合适，三次就会过涝！\n# 种满所有格子：2小麦 + 6胡萝卜\n\ndef go_home():\n    while get_pos()[0] > 0:\n        move(\"left\")\n\n# 种满所有格子（跳过岩石）\nfor row in range(3):\n    for col in range(3):\n        cell = get_current()\n        if cell[\"state\"] == \"empty\":\n            till()\n            if row == 0:\n                plant(\"wheat\")\n                water()\n            else:\n                plant(\"carrot\")\n                water()\n                water()  # 胡萝卜需要两次水\n        if col < 2:\n            move(\"right\")\n    go_home()\n    if row < 2:\n        move(\"down\")\n\ngo_home()\nwhile get_pos()[1] > 0:\n    move(\"up\")\n\n# 等待（胡萝卜需要14 tick）\nfor i in range(14):\n    wait()\n\n# 收割所有作物\nfor row in range(3):\n    for col in range(3):\n        cell = get_current()\n        if cell[\"state\"] == \"mature\":\n            harvest()\n        if col < 2:\n            move(\"right\")\n    go_home()\n    if row < 2:\n        move(\"down\")\n"_s;
         l.presetCells = {makeRock(2, 0)};
@@ -152,7 +152,7 @@ void LevelManager::loadLevels() {
 
         l.bugProbability = 0.0f;
         l.allowedFunctions = {"move","till","plant","harvest","water","wait","get_pos","get_map_size","get_current"};
-        l.allowedSyntax = {"expr","call","assign","if","for","in","range","def"};
+        l.allowedSyntax = {"expr","call","assign","if","for","in","range","def","while","else"};
         l.allowedCrops = {"wheat","carrot"};
         l.tutorialCode = u"# 用函数封装耕种\n# 种满所有16格：8小麦 + 8胡萝卜\n\ndef go_home():\n    while get_pos()[0] > 0:\n        move(\"left\")\n\ndef go_top():\n    while get_pos()[1] > 0:\n        move(\"up\")\n\ndef plant_row(crop):\n    for i in range(4):\n        cell = get_current()\n        if cell[\"state\"] == \"empty\":\n            till()\n            plant(crop)\n            water()\n            if crop == \"carrot\":\n                water()\n        if i < 3:\n            move(\"right\")\n\ndef harvest_row():\n    for i in range(4):\n        cell = get_current()\n        if cell[\"state\"] == \"mature\":\n            harvest()\n        if i < 3:\n            move(\"right\")\n\n# 种两行小麦 + 两行胡萝卜\nfor row in range(4):\n    if row < 2:\n        plant_row(\"wheat\")\n    else:\n        plant_row(\"carrot\")\n    go_home()\n    if row < 3:\n        move(\"down\")\n\ngo_home()\ngo_top()\n\n# 等待（胡萝卜需要14 tick）\nfor i in range(14):\n    wait()\n\n# 收割所有\nfor row in range(4):\n    harvest_row()\n    go_home()\n    if row < 3:\n        move(\"down\")\n"_s;
         l.presetCells = {};
@@ -181,7 +181,7 @@ void LevelManager::loadLevels() {
 
         l.bugProbability = 0.0f;
         l.allowedFunctions = {"move","till","plant","harvest","water","fertilize","wait","get_pos","get_map_size","get_current"};
-        l.allowedSyntax = {"expr","call","assign","if","for","in","range","def"};
+        l.allowedSyntax = {"expr","call","assign","if","for","in","range","def","while"};
         l.allowedCrops = {"wheat","carrot"};
         l.tutorialCode = u"# 施肥加速收获！\n\ndef go_home():\n    while get_pos()[0] > 0:\n        move(\"left\")\n\n# 种植并施肥\nfor row in range(4):\n    for col in range(4):\n        cell = get_current()\n        if cell[\"state\"] == \"empty\":\n            till()\n            plant(\"wheat\")\n            water()\n            fertilize()\n        if col < 3:\n            move(\"right\")\n    go_home()\n    if row < 3:\n        move(\"down\")\n\n# 回到起点\ngo_home()\nwhile get_pos()[1] > 0:\n    move(\"up\")\n\n# 施肥后小麦约4 tick成熟\nfor i in range(5):\n    wait()\n\n# 收割\nfor row in range(4):\n    for col in range(4):\n        cell = get_current()\n        if cell[\"state\"] == \"mature\":\n            harvest()\n        if col < 3:\n            move(\"right\")\n    go_home()\n    if row < 3:\n        move(\"down\")\n"_s;
         l.presetCells = {makeRock(3, 0), makeRock(3, 2)};
@@ -205,7 +205,7 @@ void LevelManager::loadLevels() {
 
         l.bugProbability = 0.0f;
         l.allowedFunctions = {"move","till","plant","harvest","water","fertilize","wait","get_pos","get_map_size","get_current"};
-        l.allowedSyntax = {"expr","call","assign","if","for","in","range","def"};
+        l.allowedSyntax = {"expr","call","assign","if","for","in","range","def","while","else"};
         l.allowedCrops = {"wheat","carrot","tomato"};
         l.tutorialCode = u"# 种满所有格子：小麦+胡萝卜+番茄\n# 岩石在 (3,0), (3,1), (2,3)\n\ndef go_home():\n    while get_pos()[0] > 0:\n        move(\"left\")\n\ndef go_top():\n    while get_pos()[1] > 0:\n        move(\"up\")\n\ndef plant_row(crop):\n    for i in range(4):\n        cell = get_current()\n        if cell[\"state\"] == \"empty\":\n            till()\n            plant(crop)\n            water()\n            if crop == \"carrot\":\n                water()\n            fertilize()\n        if i < 3:\n            move(\"right\")\n\ndef harvest_row():\n    for i in range(4):\n        cell = get_current()\n        if cell[\"state\"] == \"mature\":\n            harvest()\n        if i < 3:\n            move(\"right\")\n\n# 种四行（跳过岩石）\nfor row in range(4):\n    if row == 0:\n        plant_row(\"wheat\")\n    elif row == 1:\n        plant_row(\"carrot\")\n    else:\n        plant_row(\"tomato\")\n    go_home()\n    if row < 3:\n        move(\"down\")\n\ngo_home()\ngo_top()\n\n# 等待成熟\nfor i in range(10):\n    wait()\n\n# 收割所有\nfor row in range(4):\n    harvest_row()\n    go_home()\n    if row < 3:\n        move(\"down\")\n"_s;
         l.presetCells = {makeRock(3, 0), makeRock(3, 1), makeRock(3, 3)};
@@ -231,7 +231,7 @@ void LevelManager::loadLevels() {
 
         l.bugProbability = 0.0f;
         l.allowedFunctions = {"move","till","plant","harvest","water","fertilize","wait","get_pos","get_map_size","get_current"};
-        l.allowedSyntax = {"expr","call","assign","if","for","in","range","def","while"};
+        l.allowedSyntax = {"expr","call","assign","if","for","in","range","def","while","else"};
         l.allowedCrops = {"wheat","carrot","tomato"};
         l.tutorialCode = u"# 用 while 优化路径\n\ndef go_home():\n    while get_pos()[0] > 0:\n        move(\"left\")\n\ndef go_top():\n    while get_pos()[1] > 0:\n        move(\"up\")\n\ndef plant_all():\n    for row in range(4):\n        for col in range(4):\n            cell = get_current()\n            if cell[\"state\"] == \"empty\":\n                till()\n                if row < 2:\n                    plant(\"wheat\")\n                else:\n                    plant(\"tomato\")\n                water()\n                fertilize()\n            if col < 3:\n                move(\"right\")\n        go_home()\n        if row < 3:\n            move(\"down\")\n\ndef harvest_all():\n    for row in range(4):\n        for col in range(4):\n            cell = get_current()\n            if cell[\"state\"] == \"mature\":\n                harvest()\n            if col < 3:\n                move(\"right\")\n        go_home()\n        if row < 3:\n            move(\"down\")\n\nplant_all()\ngo_home()\ngo_top()\n\nfor i in range(8):\n    wait()\n\nharvest_all()\n"_s;
         l.presetCells = {makeRock(3, 0), makeRock(3, 1), makeRock(3, 2), makeRock(3, 3)};
@@ -260,7 +260,7 @@ void LevelManager::loadLevels() {
 
         l.bugProbability = 0.003f;
         l.allowedFunctions = {"move","till","plant","harvest","water","fertilize","spray","wait","debug","get_pos","get_map_size","get_current"};
-        l.allowedSyntax = {"expr","call","assign","if","for","in","range","def","while"};
+        l.allowedSyntax = {"expr","call","assign","if","for","in","range","def","while","else"};
         l.allowedCrops = {"wheat","carrot","tomato"};
         l.tutorialCode = u"# 种番茄，巡逻防虫并浇水\n\ndef go_home():\n    while get_pos()[0] > 0:\n        move(\"left\")\n\ndef go_top():\n    while get_pos()[1] > 0:\n        move(\"up\")\n\n# 种两行番茄\nfor row in range(2):\n    for col in range(4):\n        cell = get_current()\n        if cell[\"state\"] == \"empty\":\n            till()\n            plant(\"tomato\")\n            water()\n            fertilize()\n        if col < 3:\n            move(\"right\")\n    go_home()\n    if row < 1:\n        move(\"down\")\n\n# 回到起点\ngo_home()\ngo_top()\n\n# 巡逻防虫并浇水\nfor t in range(15):\n    wait()\n    if t % 3 == 0:\n        for row in range(2):\n            for col in range(4):\n                cell = get_current()\n                if cell[\"hasBug\"]:\n                    spray()\n                elif cell[\"water\"] < 0.2:\n                    water()\n                if col < 3:\n                    move(\"right\")\n            go_home()\n            if row < 1:\n                move(\"down\")\n        go_home()\n        go_top()\n\n# 等待成熟\nfor i in range(5):\n    wait()\n\n# 收割\ngo_home()\ngo_top()\nfor row in range(2):\n    for col in range(4):\n        cell = get_current()\n        if cell[\"state\"] == \"mature\":\n            harvest()\n        if col < 3:\n            move(\"right\")\n    go_home()\n    if row < 1:\n        move(\"down\")\n"_s;
         l.presetCells = {makeRock(3, 2), makeRock(3, 3), makePestZone(2, 1)};
@@ -284,7 +284,7 @@ void LevelManager::loadLevels() {
 
         l.bugProbability = 0.005f;
         l.allowedFunctions = {"move","till","plant","harvest","water","fertilize","spray","wait","debug","get_pos","get_map_size","get_current"};
-        l.allowedSyntax = {"expr","call","assign","if","for","in","range","def","while"};
+        l.allowedSyntax = {"expr","call","assign","if","for","in","range","def","while","else"};
         l.allowedCrops = {"wheat","carrot","tomato","corn"};
         l.tutorialCode = u"# 种玉米，施肥加速，巡逻防虫\n\ndef go_home():\n    while get_pos()[0] > 0:\n        move(\"left\")\n\ndef go_top():\n    while get_pos()[1] > 0:\n        move(\"up\")\n\n# 种两行玉米并施肥\nfor row in range(2):\n    for col in range(4):\n        cell = get_current()\n        if cell[\"state\"] == \"empty\":\n            till()\n            plant(\"corn\")\n            water()\n            water()  # 多浇水防干旱\n            fertilize()\n        if col < 3:\n            move(\"right\")\n    go_home()\n    if row < 1:\n        move(\"down\")\n\n# 回到起点\ngo_home()\ngo_top()\n\n# 巡逻防虫并补水\nfor t in range(20):\n    wait()\n    if t % 3 == 0:\n        for row in range(2):\n            for col in range(4):\n                cell = get_current()\n                if cell[\"hasBug\"]:\n                    spray()\n                elif cell[\"water\"] < 0.25:\n                    water()\n                if col < 3:\n                    move(\"right\")\n            go_home()\n            if row < 1:\n                move(\"down\")\n        go_home()\n        go_top()\n\n# 收割\ngo_home()\ngo_top()\nfor row in range(2):\n    for col in range(4):\n        cell = get_current()\n        if cell[\"state\"] == \"mature\":\n            harvest()\n        if col < 3:\n            move(\"right\")\n    go_home()\n    if row < 1:\n        move(\"down\")\n"_s;
         l.presetCells = {makeRock(4, 1), makeRock(4, 4), makePestZone(1, 0), makePestZone(3, 1)};
@@ -308,7 +308,7 @@ void LevelManager::loadLevels() {
 
         l.bugProbability = 0.007f;
         l.allowedFunctions = {"move","till","plant","harvest","water","fertilize","spray","wait","debug","get_pos","get_map_size","get_current"};
-        l.allowedSyntax = {"expr","call","assign","if","for","in","range","def","while"};
+        l.allowedSyntax = {"expr","call","assign","if","for","in","range","def","while","else"};
         l.allowedCrops = {"wheat","carrot","tomato","corn"};
         l.tutorialCode = u"# 混合种植，持续巡逻\n\ndef go_home():\n    while get_pos()[0] > 0:\n        move(\"left\")\n\ndef go_top():\n    while get_pos()[1] > 0:\n        move(\"up\")\n\ndef plant_row(crop):\n    for i in range(5):\n        cell = get_current()\n        if cell[\"state\"] == \"empty\":\n            till()\n            plant(crop)\n            water()\n            if crop == \"carrot\":\n                water()\n            fertilize()\n        if i < 4:\n            move(\"right\")\n\nplant_row(\"wheat\")\nmove(\"down\")\ngo_home()\nplant_row(\"tomato\")\nmove(\"down\")\ngo_home()\nplant_row(\"corn\")\n\n# 回到起点\ngo_home()\ngo_top()\n\n# 持续巡逻（每3 tick巡逻一次）\ndef patrol():\n    for row in range(3):\n        for col in range(5):\n            cell = get_current()\n            if cell[\"hasBug\"]:\n                spray()\n            elif cell[\"water\"] < 0.15:\n                water()\n            if col < 4:\n                move(\"right\")\n        go_home()\n        if row < 2:\n            move(\"down\")\n    go_home()\n    go_top()\n\nfor t in range(20):\n    wait()\n    if t % 3 == 0:\n        patrol()\n\n# 收割\ngo_home()\ngo_top()\nfor row in range(3):\n    for col in range(5):\n        cell = get_current()\n        if cell[\"state\"] == \"mature\":\n            harvest()\n        if col < 4:\n            move(\"right\")\n    go_home()\n    if row < 2:\n        move(\"down\")\n"_s;
         l.presetCells = {

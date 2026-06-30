@@ -61,13 +61,13 @@ Rectangle {
                 anchors.horizontalCenter: parent.horizontalCenter
 
                 MenuButton {
-                    text: "Cancel"
+                    text: "取消"
                     implicitW: 100
                     implicitH: 36
                     onClicked: { root.visible = false; root.cancelled() }
                 }
                 MenuButton {
-                    text: "Confirm"
+                    text: "确认"
                     primary: true
                     implicitW: 100
                     implicitH: 36

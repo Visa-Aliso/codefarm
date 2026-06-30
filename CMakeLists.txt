@@ -42,6 +42,7 @@ qt_add_executable(codefarm
     src/editor/syntaxhighlighter.cpp
     src/save/savemanager.cpp
     src/ui/appviewmodel.cpp
+    src/audio/audiomanager.cpp
 )
 
 qt_add_qml_module(codefarm
@@ -56,6 +57,7 @@ qt_add_qml_module(codefarm
         qml/pages/ResultScreen.qml
         qml/pages/FailScreen.qml
         qml/pages/HelpPage.qml
+        qml/pages/SettingsPage.qml
         qml/components/MenuButton.qml
         qml/components/ResourceBar.qml
         qml/components/LevelTile.qml
@@ -64,6 +66,8 @@ qt_add_qml_module(codefarm
         qml/components/FloatingEditor.qml
         qml/components/GoalOverlay.qml
         qml/components/ConfirmDialog.qml
+        qml/components/ToggleSwitch.qml
+        qml/components/SettingSlider.qml
     RESOURCES
         resources/fonts/Nunito-Regular.ttf
         resources/fonts/Nunito-SemiBold.ttf
@@ -71,6 +75,11 @@ qt_add_qml_module(codefarm
         resources/fonts/JetBrainsMono-Regular.ttf
         resources/fonts/fredoka-one.one-regular.ttf
         resources/pictures/jackstraw.png
+        resources/audio/bgm_town.ogg
+        resources/audio/bgm_forest.ogg
+        resources/audio/sfx_click.wav
+        resources/audio/sfx_clear.wav
+        resources/audio/sfx_fail.wav
         resources/sprites/crops/wheat_small.png
         resources/sprites/crops/wheat_growing.png
         resources/sprites/crops/wheat_mature.png

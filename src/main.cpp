@@ -17,6 +17,7 @@
 #include "levels/levelmanager.h"
 #include "save/savemanager.h"
 #include "ui/appviewmodel.h"
+#include "audio/audiomanager.h"
 
 namespace {
 bool hasSmokeTestArg(int argc, char *argv[]) {
@@ -172,11 +173,14 @@ int main(int argc, char *argv[]) {
     auto *gameEngine = new GameEngine(&app);
     auto *levelManager = new LevelManager(&app);
     auto *saveManager = new SaveManager(&app);
+    auto *audioManager = new AudioManager(&app);
 
     saveManager->load();
     levelManager->loadProgress(saveManager->levelProgress());
     gameEngine->setLevelManager(levelManager);
     auto *appVm = new AppViewModel(gameEngine, levelManager, saveManager, &app);
+    gameEngine->setSpeed(appVm->runSpeed());
+    audioManager->startBgm();
 
     QObject::connect(gameEngine, &GameEngine::levelCleared, &app, [=](int stars) {
         const int levelId = gameEngine->currentLevelId();
@@ -196,6 +200,7 @@ int main(int argc, char *argv[]) {
     engine.rootContext()->setContextProperty("saveManager", saveManager);
     engine.rootContext()->setContextProperty("farmMap", gameEngine->farmMap());
     engine.rootContext()->setContextProperty("appVm", appVm);
+    engine.rootContext()->setContextProperty("audioManager", audioManager);
 
     const QUrl url(QStringLiteral("qrc:/CodeFarm/qml/main.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed,

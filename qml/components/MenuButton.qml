@@ -46,7 +46,10 @@ Item {
         hoverEnabled: true
         cursorShape: root.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
         enabled: root.enabled
-        onClicked: root.clicked()
+        onClicked: {
+            if (typeof audioManager !== "undefined") audioManager.playSfx("click")
+            root.clicked()
+        }
     }
 
     scale: mouseArea.pressed ? 0.96 : 1.0

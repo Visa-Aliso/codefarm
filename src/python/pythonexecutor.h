@@ -26,6 +26,9 @@ public:
     void setAllowedCrops(const QSet<QString> &crops);
     void finishTick();
 
+    // Exposed so the engine can synchronize tickUpdate with query-function reads.
+    std::mutex& tickMutex() { return mutex_; }
+
     void loadScript(const QString &code);
     bool startScript();
     bool executeTick();
