@@ -23,19 +23,39 @@ protected:
     void highlightBlock(const QString &text) override;
 
 private:
+    void updateVariableScan();
+    void scheduleVariableScan();
+
     QQuickTextDocument *quickDoc_ = nullptr;
     QSet<QString> allowedFunctions_;
     QSet<QString> allowedSyntax_;
+    QSet<QString> knownVars_;
+    bool varRefDirty_ = false; // set true when new vars found, triggers regex rebuild
+    QTimer *scanTimer_ = nullptr;
 
     QTextCharFormat keywordFormat_;
     QTextCharFormat apiFuncFormat_;
     QTextCharFormat stringFormat_;
     QTextCharFormat commentFormat_;
     QTextCharFormat disabledFormat_;
+    QTextCharFormat funcDefFormat_;
+    QTextCharFormat builtinFormat_;
+    QTextCharFormat numberFormat_;
+    QTextCharFormat varFormat_;
 
     QRegularExpression strRe_;
+    QRegularExpression funcDefRe_;
+    QRegularExpression funcCallRe_;
+    QRegularExpression builtinRe_;
+    QRegularExpression numRe_;
+    QRegularExpression varRe_;
+    QRegularExpression loopVarRe_;
+    QRegularExpression varRefRe_;  // rebuilt each scan from knownVars_
     QVector<QRegularExpression> kwRes_;
     QVector<QRegularExpression> fnRes_;
+    QStringList allFuncNames_;
+    QStringList keywords_;
+    QStringList builtinNames_;
 };
 
 #endif // SYNTAXHIGHLIGHTER_H

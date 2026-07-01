@@ -35,6 +35,7 @@ Item {
         border.width: root.focused ? 1 : 0
         border.color: Theme.btnGreen
         opacity: root.focused ? 1.0 : 0.92
+        clip: true
 
         // Title bar
         Rectangle {
@@ -156,6 +157,7 @@ Item {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: statusBar.top
+            visible: root.height > titleBar.height
 
             // Text editor
             Flickable {
