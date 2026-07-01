@@ -130,6 +130,20 @@ void PythonExecutor::setAllowedCrops(const QSet<QString> &crops) {
     allowedCrops_ = crops;
 }
 
+void PythonExecutor::setAllowedBuiltins(const QSet<QString> &builtins) {
+    allowedBuiltins_ = builtins;
+}
+
+bool PythonExecutor::isBuiltinAllowed(const QString &name) const {
+    // 原子层永远可用
+    static const QSet<QString> atomic = {
+        "print", "int", "float", "str", "bool"
+    };
+    if (atomic.contains(name)) return true;
+    // 教学层：必须在当前关 allowedBuiltins_ 中显式列出才可用
+    return allowedBuiltins_.contains(name);
+}
+
 void PythonExecutor::finishTick() {
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -192,9 +206,10 @@ bool PythonExecutor::startScript() {
         return false;
     }
 
-    // AST-based syntax enforcement: check that the script only uses syntax
-    // constructs allowed by the current level's allowedSyntax set.
-    if (!allowedSyntax_.isEmpty()) {
+    // AST-based syntax enforcement + feature pre-computation for ★3 rating.
+    // Always run to populate scriptFeatures_ (even if allowedSyntax_ is empty).
+    scriptFeatures_.clear();
+    {
         try {
             py::gil_scoped_acquire gil;
             py::module_ astModule = py::module_::import("ast");
@@ -203,6 +218,7 @@ bool PythonExecutor::startScript() {
             // Map AST node types to allowedSyntax keys, then check.
             // We walk the tree via a Python helper that returns a set of
             // syntax-feature strings found in the AST.
+            // Also detects Call nodes' function names for ★3 feature matching.
             py::dict checkGlobals;
             checkGlobals[py::str("tree")] = tree;
             py::str checkScript(
@@ -216,6 +232,7 @@ bool PythonExecutor::startScript() {
                 "        if node.orelse: found.add('else')\n"
                 "    elif isinstance(node, ast.FunctionDef): found.add('def')\n"
                 "    elif isinstance(node, ast.Assign): found.add('assign')\n"
+                "    elif isinstance(node, ast.AugAssign): found.add('augassign')\n"
                 "    elif isinstance(node, ast.Break): found.add('break')\n"
                 "    elif isinstance(node, ast.Continue): found.add('continue')\n"
                 "    elif isinstance(node, ast.Return): found.add('return')\n"
@@ -224,24 +241,55 @@ bool PythonExecutor::startScript() {
                 "        elif isinstance(node.op, ast.Or): found.add('or')\n"
                 "    elif isinstance(node, ast.UnaryOp):\n"
                 "        if isinstance(node.op, ast.Not): found.add('not')\n"
+                "    elif isinstance(node, ast.Tuple): found.add('tuple')\n"
+                "    elif isinstance(node, ast.List): found.add('list')\n"
+                "    elif isinstance(node, ast.Dict): found.add('dict')\n"
+                "    elif isinstance(node, ast.ListComp): found.add('listcomp')\n"
+                "    elif isinstance(node, ast.DictComp): found.add('dictcomp')\n"
+                "    elif isinstance(node, ast.SetComp): found.add('setcomp')\n"
+                "    elif isinstance(node, ast.GeneratorExp): found.add('genexp')\n"
+                "    elif isinstance(node, ast.Lambda): found.add('lambda')\n"
+                "    elif isinstance(node, ast.Call):\n"
+                "        f = node.func\n"
+                "        if isinstance(f, ast.Name): found.add(f.id)\n"
             );
             py::module_::import("builtins").attr("exec")(checkScript, checkGlobals, checkGlobals);
             py::set foundSet = checkGlobals[py::str("found")];
 
             for (auto item : foundSet) {
                 QString key = QString::fromStdString(py::str(item));
+                // Save ALL features (syntax keys + function names) for ★3 checking
+                scriptFeatures_.insert(key);
                 // "expr", "call", "in", "range" are always allowed — skip.
                 if (key == "expr" || key == "call" || key == "in" || key == "range") {
                     continue;
                 }
-                if (!allowedSyntax_.contains(key)) {
+                // Only enforce syntax restrictions on known syntax keys.
+                // Function call names (move, till, etc.) are NOT syntax — they're
+                // checked separately via isFunctionAllowed at call time.
+                static const QSet<QString> syntaxKeys = {
+                    "for","while","if","else","def","assign","augassign",
+                    "break","continue","return","and","or","not",
+                    "tuple","list","dict","listcomp","dictcomp","setcomp",
+                    "genexp","lambda"
+                };
+                if (!syntaxKeys.contains(key)) {
+                    continue;
+                }
+                // Empty allowedSyntax_ = no restrictions (all syntax allowed).
+                if (!allowedSyntax_.isEmpty() && !allowedSyntax_.contains(key)) {
                     static const QHash<QString, QString> labels = {
                         {"for", "for 循环"}, {"while", "while 循环"},
                         {"if", "if 条件"}, {"else", "else 分支"},
                         {"def", "函数定义"}, {"assign", "变量赋值"},
+                        {"augassign", "增强赋值 +=/-="},
                         {"break", "break"}, {"continue", "continue"},
                         {"return", "return"}, {"and", "and 运算"},
-                        {"or", "or 运算"}, {"not", "not 运算"}
+                        {"or", "or 运算"}, {"not", "not 运算"},
+                        {"tuple", "元组"}, {"list", "列表字面量"},
+                        {"dict", "字典字面量"}, {"listcomp", "列表推导式"},
+                        {"dictcomp", "字典推导式"}, {"setcomp", "集合推导式"},
+                        {"genexp", "生成器表达式"}, {"lambda", "lambda 表达式"}
                     };
                     QString label = labels.value(key, key);
                     emit errorOccurred(
@@ -270,6 +318,7 @@ bool PythonExecutor::startScript() {
         pendingErrorMessage_.clear();
         pendingErrorLine_ = 0;
         currentTick_ = 0;
+        actionTickCount_ = 0;
         lastReportedLine_ = -1;
         pythonThreadId_ = 0;
     }
@@ -298,6 +347,10 @@ bool PythonExecutor::executeTick() {
 
     PendingAction action;
     if (waitForAction(action)) {
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            actionTickCount_++;
+        }
         QString error;
         const bool result = dispatchAction(action, error);
         completeAction(result, error);
@@ -309,6 +362,22 @@ bool PythonExecutor::executeTick() {
 bool PythonExecutor::isScriptCompleted() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return scriptCompleted_;
+}
+
+QSet<QString> PythonExecutor::codeUsesFeatures(const QSet<QString> &features) const {
+    // Uses the pre-computed scriptFeatures_ set (populated during startScript
+    // when the GIL was held). No GIL acquisition needed here — safe to call
+    // from the engine thread while the worker is running.
+    QSet<QString> matched;
+    if (features.isEmpty()) {
+        return matched;
+    }
+    for (const auto &f : features) {
+        if (scriptFeatures_.contains(f)) {
+            matched.insert(f);
+        }
+    }
+    return matched;
 }
 
 void PythonExecutor::stopScript() {
@@ -431,9 +500,26 @@ bool PythonExecutor::startWorkerThread() {
 
             py::module_ builtinsModule = py::module_::import("builtins");
             py::dict builtins;
-            for (const char *name : {"abs", "all", "any", "bool", "dict", "enumerate", "float",
-                                     "int", "len", "list", "max", "min", "range", "round",
-                                     "sorted", "str", "sum", "tuple", "zip"}) {
+            // 教学层内置函数：逐关解锁。未解锁的注入桩，调用即抛 RuntimeError。
+            // 原子层（print/int/float/str/bool）永远可用，下面单独注入。
+            const QStringList teachingBuiltins = {
+                "abs", "all", "any", "dict", "enumerate",
+                "len", "list", "max", "min", "range", "round",
+                "sorted", "sum", "tuple", "zip"
+            };
+            for (const QString &name : teachingBuiltins) {
+                const std::string sname = name.toStdString();
+                if (isBuiltinAllowed(name)) {
+                    builtins[py::str(sname)] = builtinsModule.attr(sname.c_str());
+                } else {
+                    const QString err = QStringLiteral("当前关卡不允许使用 %1 函数").arg(name);
+                    builtins[py::str(sname)] = py::cpp_function([err]() -> py::object {
+                        throw std::runtime_error(err.toStdString());
+                    });
+                }
+            }
+            // 原子层：始终注入真函数
+            for (const char *name : {"int", "float", "str", "bool"}) {
                 builtins[py::str(name)] = builtinsModule.attr(name);
             }
 
@@ -605,7 +691,7 @@ bool PythonExecutor::startWorkerThread() {
                 reportCurrentLine();
                 emit apiCalled(QStringLiteral("get_tick"), true);
                 std::lock_guard<std::mutex> lock(mutex_);
-                return py::int_(currentTick_);
+                return py::int_(actionTickCount_);
             });
             globals[py::str("debug")] = py::cpp_function([this, &requireFunction, &reportCurrentLine]() {
                 requireFunction(QStringLiteral("debug"));

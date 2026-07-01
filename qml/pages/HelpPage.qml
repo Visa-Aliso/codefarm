@@ -59,62 +59,62 @@ Rectangle {
 
             // Section 1: Game Overview
             HelpSection {
-                title: "游戏简介"
-                content: "Code Farm 是一款编程教育游戏。你将通过编写 Python 代码控制一架农业无人机，在农场上完成耕地、种植、浇水、施肥、除虫和收获等任务。\n\n游戏共 20 个关卡，分为 8 个教学阶段，逐步引入编程概念和农场机制。\n\n星级规则：\n  ★   收获所有指定作物（必须全部完成才能通关）\n  ★★  在规定时间内完成\n  ★★★ 在更短时间内完成\n\n提示：收获数量通常等于或超过田地大小，你可能需要收割后重新种植！"
+                title: "1. 游戏概述"
+                content: "Code Farm 是一款编程教育游戏。你将通过编写 Python 代码控制一架农业无人机，在农场上完成耕地、种植、浇水、施肥、除虫和收获等任务。\n\n游戏共 20 个关卡，分为 7 个教学阶段，逐步引入从变量赋值到生成器表达式的完整 Python 基础语法。\n\n每关只能使用当前已解锁的函数、语法和内置函数，未解锁的会报错。通关后自动解锁下一关。"
             }
 
-            // Section 2: How to Play
+            // Section 2: Editor & Running
             HelpSection {
-                title: "如何游玩"
-                content: "1. 从关卡选择界面选择一个已解锁的关卡\n2. 在代码编辑器中编写 Python 脚本\n3. 点击绿色按钮（▶）运行代码\n4. 观察无人机在农场上执行你的指令\n5. 完成所有 ★ 目标即可通关\n\n基本耕种流程：\n  till() → plant(\"wheat\") → water() → wait... → harvest()\n\n重要提示：\n  • ★ 目标要求收获指定数量的每种作物，必须全部完成\n  • 收获总数通常 ≥ 田地格子数，你可能需要收割后重新种植！\n  • 用 get_current() 检查格子状态，决定是种植还是收割\n  • 代码每个 tick 执行一个动作，用循环简化重复操作\n\n作物特性速览：\n  小麦 — 最基础，只需浇水\n  胡萝卜 — 需多浇水，但水>0.85会过涝受伤\n  番茄 — 初始水分少，需更早补浇\n  玉米 — 生长慢，缺水会损失进度\n  向日葵 — 不可收割，为周围8格提供阳光加成\n\n注意：灰色岩石格子不可移动、种植或浇水。"
+                title: "2. 编辑器与运行"
+                content: "游戏界面中的深色浮动窗口就是代码编辑器。\n\n标题栏按钮：\n  ▶ — 运行代码（空闲时显示）\n  ⏸ — 暂停执行（运行时显示）\n  ■ — 停止并重置\n  ↺ — 载入本关教程代码\n  ─ — 最小化/还原\n\n状态栏（底部）显示最近一条消息。将鼠标悬停在状态栏上可弹出完整控制台历史窗口，查看所有 print 输出和 API 调用记录。\n\n编辑器支持 Python 语法高亮：关键字蓝色、API 函数名绿色（未解锁的显示灰色删除线）、字符串金色、注释灰色斜体。"
             }
 
-            // Section 3: Code Editor
+            // Section 3: Crop Guide
             HelpSection {
-                title: "代码编辑器"
-                content: "游戏界面中的深色浮动窗口就是代码编辑器。\n\n标题栏左侧按钮：\n  ▶ — 运行代码（空闲时显示）\n  ⏸ — 暂停执行（运行时显示）\n  ■ — 停止并重置关卡（运行时显示）\n\n标题栏右侧按钮：\n  ↺ — 载入本关教程代码（一键填入编辑器，无需复制粘贴）\n  ─ — 最小化/还原编辑器\n\n状态栏（底部）显示当前状态：\n  Idle（空闲）、Running（运行中）、Paused（暂停）、Error（错误）\n\n编辑器支持 Python 语法高亮。\n游戏界面右上角 ? 按钮可打开关卡提示窗口，包含本关新函数、新语法、新作物的说明和通关目标。"
+                title: "3. 作物图鉴"
+                content: "小麦 wheat — 6 tick 成熟，水分阈值 0.0（最宽容）。解锁: 关卡1\n\n胡萝卜 carrot — 14 tick，水分阈值 0.4，需浇两次水。过涝敏感：水>0.85 损失进度。解锁: 关卡5\n\n番茄 tomato — 12 tick，水分阈值 0.25，初始水分少需早补水。解锁: 关卡7\n\n玉米 corn — 20 tick，水分阈值 0.2。旱灾敏感：水=0 损失进度，需持续供水。解锁: 关卡9\n\n向日葵 sunflower — 35 tick，不可收割！成熟后持续为周围8格提供 +0.15/tick 阳光加成。过涝且缺水都致命。解锁: 关卡12\n\n水分机制：每 tick 蒸发 0.01，浇水 +0.35（最高1.0）。水≥阈值全速生长，水>0但<阈值半速，水=0 停止生长。\n\n施肥效果：水≥0.6 时 1.8 倍，否则 1.5 倍，持续 12 tick。"
             }
 
-            // Section 4: Teaching Roadmap
+            // Section 4: Terrain & Mechanics
             HelpSection {
-                title: "教学路线图"
-                content: "阶段 1（关1-2）：入门耕种\n  1×1 → 2×2，学习 till→plant→water→harvest\n  二维移动、for 循环和 if 条件\n\n阶段 2（关3-5）：基础循环\n  3×3 → 4×4，岩石障碍物绕行\n  for 循环批量耕种、def 函数封装\n  get_current() 查询、变量和条件判断\n  胡萝卜过涝机制\n\n阶段 3（关6-8）：进阶管理\n  4×4，施肥加速 + 番茄二次浇水\n  fertilize()、多作物管理\n  while 循环、嵌套循环优化\n\n阶段 4（关9-11）：虫害管理\n  4×4 → 5×5，虫害区概念\n  spray() 喷药除虫、玉米旱灾机制\n  持续巡逻模式\n\n阶段 5（关12-14）：高级逻辑\n  5×5 → 6×6，布尔运算 (and/or/not)\n  break / continue 优化巡逻\n  return、get_goals()、路径规划\n\n阶段 6（关15-17）：向日葵\n  6×6，向日葵阳光加成\n  不可收割作物、过涝致命\n  棋盘格布局优化、效率挑战\n\n阶段 7（关18-19）：综合应用\n  7×7，大规模多作物管理\n  极限效率限时挑战\n\n阶段 8（关20）：终极挑战\n  8×8 终极农场，全机制综合"
+                title: "4. 地形与机制"
+                content: "岩石（灰色）— 不可进入、不可犁地/种植/浇水/喷药。无人机移动到岩石会失败。规划路径时需绕开。\n\n虫害区（紫色标记）— 虫子生成概率翻倍。需要更频繁的 spray() 巡逻。\n\n虫害机制：每 tick 有概率随机出现在有作物的格子。虫害加速水分蒸发3倍，并回退生长进度。用 spray() 清除并获得12 tick免疫。\n\n3 星维度判定：\n  ★1 — 完成所有必需收获目标（通关条件）\n  ★2 — 通关时 tick 数 ≤ 效率阈值\n  ★3 — tick 数 ≤ 更严格阈值，且代码中实际使用了当关教学的新特性\n  巩固关（无新特性）★3 退化为纯 tick 门槛\n  maxTimeSec 为硬失败时限（墙上时间），与星级解耦"
             }
 
-            // Section 5: Basic Commands
+            // Section 5: Action Functions
             HelpSection {
-                title: "基础指令（动作）"
-                content: "till() — 犁地\n  将当前空地开垦为可种植状态。\n  如果当前格不是空地或是岩石，操作失败。\n  解锁: 关卡 1\n\nplant(作物) — 种植\n  在已犁好的地上种下作物。\n  可选作物: \"wheat\" / \"carrot\" / \"tomato\" / \"corn\" / \"sunflower\"\n  向日葵不可收割，但会持续为周围8格提供阳光加成。\n  如果当前格未犁地或已有作物，操作失败。\n  解锁: 关卡 1\n\nwater() — 浇水\n  给当前格浇水，水分 +0.35（最高 1.0）。\n  作物需要水分才能生长，可多次浇水叠加。\n  注意：胡萝卜和向日葵浇水过多（>0.85）会过涝受伤！\n  如果当前格没有作物或是岩石，操作失败。\n  解锁: 关卡 1\n\nwait() — 等待\n  等待一个 tick（约 0.5 秒），不做任何操作。\n  用于等待作物成熟。\n  解锁: 关卡 1\n\nharvest() — 收割\n  收割当前格已成熟的作物。\n  作物进度达到 100% 后变为 Mature 状态才可收割。\n  向日葵不可收割（它会持续提供阳光加成）。\n  如果作物未成熟、有虫害或不可收割，操作失败。\n  解锁: 关卡 1\n\nmove(方向) — 移动\n  移动无人机一格。\n  方向: \"up\"(上) / \"down\"(下) / \"left\"(左) / \"right\"(右)\n  不能移出地图边界，不能移动到岩石格子。\n  解锁: 关卡 2\n\nfertilize() — 施肥\n  给当前格施肥，加速作物生长。\n  水分 ≥ 0.6 时加速 1.8 倍，否则加速 1.5 倍。\n  效果持续 12 tick，之后失效。\n  解锁: 关卡 6\n\nspray() — 喷药\n  清除当前格的虫害，并获得 12 tick 的虫害免疫。\n  如果当前格没有虫害，仍然消耗一个 tick 但无实际效果。\n  解锁: 关卡 9"
+                title: "5. 动作函数手册"
+                content: "每个动作函数消耗 1 tick，返回 True/False。\n\ntill() — 犁地。空地→已犁。解锁: 关卡1\nplant(作物) — 种植。已犁→已种。解锁: 关卡1\nwater() — 浇水 +0.35。解锁: 关卡1\nwait() — 等待 1 tick（不操作）。解锁: 关卡1\nharvest() — 收割成熟作物（无虫害）。解锁: 关卡1\nmove(方向) — 移动一格。方向: \"up\"/\"down\"/\"left\"/\"right\"。解锁: 关卡2\nfertilize() — 施肥加速。解锁: 关卡7\nspray() — 除虫+12tick免疫。解锁: 关卡8"
             }
 
-            // Section: Crop Info
+            // Section 6: Query Functions
             HelpSection {
-                title: "作物信息"
-                content: "小麦 (wheat)\n  成熟时间: 约 3 秒 (6 tick)\n  水分阈值: 0.0（最宽容，只需浇水即可）\n  特点: 最快成熟的作物，适合入门练习\n  解锁: 关卡 1\n\n胡萝卜 (carrot)\n  成熟时间: 约 7 秒 (14 tick)\n  水分阈值: 0.4（需要较多浇水，建议 water() 两次）\n  特点: 过涝惩罚！水分 > 0.85 时每 tick 损失 0.03 进度\n  解锁: 关卡 4\n\n番茄 (tomato)\n  成熟时间: 约 6 秒 (12 tick)\n  水分阈值: 0.25\n  特点: 初始水分只有 0.4（非 0.5），需要更早补浇\n  解锁: 关卡 7\n\n玉米 (corn)\n  成熟时间: 约 10 秒 (20 tick)\n  水分阈值: 0.2\n  特点: 旱灾惩罚！水分 = 0 时每 tick 损失 0.02 进度\n        生长慢且容易生虫，需要持续供水和巡逻\n  解锁: 关卡 10\n\n向日葵 (sunflower)\n  成熟时间: 约 17.5 秒 (35 tick)\n  水分阈值: 0.3\n  特点: 不可收割！成熟后持续为周围 8 格提供阳光加成\n        (+0.15 生长速度/tick)\n        过涝致命：水分 > 0.85 时每 tick 损失 0.05 进度\n        缺水也致命：水分 = 0 时每 tick 损失 0.05 进度\n  解锁: 关卡 15\n\n水分机制:\n  每 tick 水分自然蒸发 0.01\n  浇水一次 +0.35，最高 1.0\n  水分 ≥ 阈值: 全速生长\n  水分 > 0 但 < 阈值: 半速生长\n  水分 = 0: 停止生长（敏感作物还会损失进度）\n\n施肥效果:\n  水分 ≥ 0.6: 生长加速 1.8 倍\n  水分 < 0.6: 生长加速 1.5 倍\n  持续 12 tick 后失效\n\n虫害机制:\n  每 tick 有概率随机出现在有作物的格子\n  虫害区（紫色格子）虫子生成概率翻倍\n  虫害会使水分蒸发加速 3 倍，并回退生长\n  用 spray() 清除虫害并获得 12 tick 免疫\n\n岩石障碍:\n  灰色岩石格子不可移动、种植、浇水或喷药\n  需要规划路径绕开岩石"
+                title: "6. 查询函数手册"
+                content: "查询函数不消耗 tick，立即返回数据。\n\nget_pos() — 返回元组 (x, y)。x=列, y=行。解锁: 关卡2\nget_map_size() — 返回元组 (w, h)。解锁: 关卡3\nget_current() — 返回字典: state/crop/water/hasBug/progress/fertilized。解锁: 关卡4\ndebug() — 打印当前格信息到控制台，同时返回字典。解锁: 关卡6\nget_tick() — 返回当前 tick 数（整数）。解锁: 关卡10\nget_goals() — 返回目标列表，每项含 description/current/target/completed。解锁: 关卡14"
             }
 
-            // Section: Available Syntax
+            // Section 7: Syntax Unlock Roadmap
             HelpSection {
-                title: "可用语法"
-                content: "你可以在代码编辑器中使用以下 Python 语法：\n\n从关卡 1 起可用：\n  表达式和函数调用: harvest(), move(\"right\")\n  for 循环: for i in range(5):\n\n从关卡 2 起新增：\n  if 条件: if i < 3:\n\n从关卡 3 起新增：\n  变量赋值: pos = get_pos()\n  while 循环: while get_pos()[0] > 0:\n\n从关卡 5 起新增：\n  def 函数定义: def plant_row():\n\n从关卡 12 起新增：\n  布尔运算: and, or, not\n  else 分支: if ... else ...\n\n从关卡 13 起新增：\n  break: 提前退出循环\n  continue: 跳过本次迭代\n\n从关卡 14 起新增：\n  return: 从函数返回值\n\n注意：import 语句被禁用，只可使用游戏提供的内置函数。"
+                title: "7. Python 语法解锁路线"
+                content: "关卡1: 顺序调用、注释\n关卡2: 变量赋值 assign, if 条件\n关卡3: for + range 循环\n关卡4: while 循环\n关卡5: def 函数定义、参数\n关卡6: return 返回值, elif/else, not 取反\n关卡7: and / or 布尔组合\n关卡8: break / continue 循环控制\n关卡10: 元组解包 a, b = ...\n关卡11: 列表字面量 [a, b, c], 切片\n关卡12: 增强赋值 += -=, min/max/sum\n关卡13: 字典字面量 {k: v}, items/keys/values\n关卡14: 列表推导式 [x for x in xs if cond]\n关卡15: enumerate, zip, sorted\n关卡16: all/any, round/abs, 嵌套函数\n关卡17: lambda, 默认参数, 闭包\n关卡18: 字典推导式 {k: v for ...}\n关卡19: 生成器表达式 (x for x in xs), 集合推导式 {x for x in xs}\n关卡20: 全语法综合\n\n注意：import 语句被禁用。每关未解锁的语法会在运行前 AST 检查时报错。"
             }
 
-            // Section 6: Query Commands
+            // Section 8: Builtins Quick Reference
             HelpSection {
-                title: "查询指令（免费）"
-                content: "get_pos() — 获取坐标\n  返回元组 (x, y)，表示无人机当前位置。\n  x 为列号（从左到右），y 为行号（从上到下）。\n  用法: pos = get_pos(); x = pos[0]\n  解锁: 关卡 2\n\nget_map_size() — 获取地图尺寸\n  返回元组 (w, h)，w 为宽度，h 为高度。\n  用法: size = get_map_size(); w = size[0]\n  解锁: 关卡 2\n\nget_current() — 获取当前格信息\n  返回字典，包含以下字段:\n    state: \"empty\" / \"tilled\" / \"planted\" / \"mature\" / \"rock\"\n    crop: \"wheat\" / \"carrot\" / \"tomato\" / \"corn\" / \"sunflower\" / \"\"\n    water: 当前水分值 (0.0 ~ 1.0)\n    hasBug: True / False\n    progress: 生长进度 (0.0 ~ 1.0)\n    fertilized: True / False\n  用法: cell = get_current(); if cell[\"hasBug\"]: spray()\n  解锁: 关卡 3\n\ndebug() — 调试信息\n  在控制台打印当前格的详细信息，同时返回格子信息字典。\n  用于调试脚本逻辑。\n  解锁: 关卡 9\n\nget_tick() — 获取 tick 数\n  返回当前已执行的 tick 数（整数）。\n  解锁: 关卡 13\n\nget_goals() — 获取目标列表\n  返回关卡目标列表，每个目标包含:\n    description: 目标描述\n    current: 当前进度\n    target: 目标值\n    completed: 是否完成\n    starTier: 星级 (1/2/3)\n  解锁: 关卡 14"
+                title: "8. 内置函数速查"
+                content: "原子层（永远可用）：\n  print(x) — 输出到控制台（鼠标悬停状态栏查看完整历史）\n  int(x), float(x), str(x), bool(x) — 类型转换\n\n教学层（逐关解锁）：\n  range(n) — 生成 0..n-1 序列。解锁: 关卡3\n  tuple() — 元组构造器。解锁: 关卡10\n  len(x) — 长度。解锁: 关卡11\n  enumerate(xs) — 带下标遍历。解锁: 关卡11\n  min(xs), max(xs) — 最值。解锁: 关卡12\n  sum(xs) — 求和。解锁: 关卡12\n  dict(), list() — 构造器。解锁: 关卡13\n  sorted(xs) — 排序。解锁: 关卡15\n  zip(a, b) — 配对。解锁: 关卡15\n  all(xs), any(xs) — 全真/一真。解锁: 关卡16\n  round(x, n), abs(x) — 四舍五入/绝对值。解锁: 关卡16\n\n未解锁的内置函数调用时会抛出 \"当前关卡不允许使用 X 函数\" 错误。"
             }
 
-            // Section 7: Programming Concepts
+            // Section 9: Common Errors
             HelpSection {
-                title: "编程概念"
-                content: "for 循环（关卡 1 起）：\n  for i in range(5):\n      harvest()\n      move(\"right\")\n  重复执行固定次数\n\nif 条件（关卡 2 起）：\n  if cell[\"crop\"] == \"wheat\":\n      harvest()\n  根据条件选择不同操作\n\n变量和 while 循环（关卡 3 起）：\n  pos = get_pos()\n  cell = get_current()\n  while get_pos()[0] > 0:\n      move(\"left\")\n  用变量保存数据，while 重复直到条件不满足\n\ndef 函数（关卡 5 起）：\n  def plant_row(crop):\n      for i in range(5):\n          till()\n          plant(crop)\n  封装可复用的逻辑\n\n布尔逻辑和 else（关卡 12 起）：\n  and（与）、or（或）、not（非）\n  if ... else ... 分支\n  组合复杂条件判断\n\nbreak / continue（关卡 13 起）：\n  break — 提前退出循环\n  continue — 跳过本次迭代\n\nreturn（关卡 14 起）：\n  从函数返回值"
+                title: "9. 常见错误与调试"
+                content: "缩进错误 (IndentationError) — Python 用缩进表示代码块，请用4个空格，不要混用 Tab。\n\n未解锁语法 — \"当前关卡不允许使用 for 循环\" 等。查看帮助第7节确认该关解锁了哪些语法。\n\n未解锁函数 — \"当前关卡不允许调用 spray()\" 等。查看关卡提示窗口确认可用函数。\n\n未解锁内置函数 — \"当前关卡不允许使用 len 函数\" 等。查看帮助第8节确认解锁顺序。\n\n作物未成熟 — harvest() 返回 False。用 get_current()[\"state\"] 检查是否为 \"mature\"，或用 debug() 查看进度。\n\n过涝 — 胡萝卜/向日葵水>0.85 损失进度。减少浇水次数。\n\n旱灾 — 玉米/向日葵水=0 损失进度。增加巡逻补水频率。\n\n移动失败 — 可能是岩石阻挡或地图边界。用 get_pos() 确认位置。"
             }
 
-            // Section 8: Game Mechanics
+            // Section 10: Stars & Progress
             HelpSection {
-                title: "星级评价"
-                content: "★ 完成所有指定作物的收获目标（必须全部完成才能通关）\n  每种作物都有独立的数量要求\n  例如：收获小麦×4、胡萝卜×4\n  收获总数通常等于或超过田地可用格子数\n\n★★ 在规定时间内完成（宽松时限）\n  给玩家留有余地的时间目标\n\n★★★ 在更短时间内完成（严格时限）\n  需要高效代码才能达成\n\n时间计算：\n  从进入关卡开始计时，包括思考、打字、代码运行的全部时间。\n  暂停期间时间继续计算。\n  详细时间要求请查看每关的目标面板。\n\n提示：如果收获总数 > 田地格子数，你需要：\n  1. 种满所有格子\n  2. 等待成熟并收割\n  3. 在收割后的空地上再次种植\n  4. 重复直到达到目标数量"
+                title: "10. 星级与进度"
+                content: "★1 通关 — 完成所有必需收获目标，解锁下一关。\n★2 效率 — 通关时 tick 数 ≤ 阈值。tick 是确定性计数器（每次动作+1），只取决于代码算法，不受电脑速度或手速影响。\n★3 学以致用 — tick 数 ≤ 更严格阈值，且代码中实际使用了当关教学的新语法或新函数。这确保你真的学会了新概念，而不只是用旧知识暴力通关。\n\n巩固关（如关卡9）无新特性，★3 退化为纯 tick 门槛。\n\nmaxTimeSec 为硬失败时限——墙上时间耗尽直接失败，与星级无关。\n\n进度自动保存到 ~/.codefarm/save.json。可在设置中重置全部进度。\n\n每关用户脚本也自动保存，切回该关时自动恢复。"
             }
 
             Item { width: 1; height: 30 }

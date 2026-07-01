@@ -255,7 +255,7 @@ Item {
                 elide: Text.ElideRight
                 maximumLineCount: 1
                 wrapMode: Text.NoWrap
-                width: Math.min(implicitWidth, 200)
+                width: Math.min(implicitWidth, 280)
             }
         }
     }

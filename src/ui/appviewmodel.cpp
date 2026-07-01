@@ -32,6 +32,7 @@ AppViewModel::AppViewModel(GameEngine *engine,
     connect(levelManager_, &LevelManager::levelUnlocked, this, &AppViewModel::levelsChanged);
     connect(engine_, &GameEngine::currentLevelChanged, this, [this]() {
         activeLevelId_ = engine_->currentLevelId();
+        setConsoleLine(QStringLiteral("系统就绪，等待任务。"));
         emit activeLevelChanged();
         emit activeGoalsChanged();
         emit runtimeChanged();

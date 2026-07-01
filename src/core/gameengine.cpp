@@ -6,6 +6,8 @@
 #include "levels/levelmanager.h"
 #include "levels/leveldata.h"
 
+#include <QRegularExpression>
+
 GameEngine::GameEngine(QObject *parent)
     : QObject(parent)
     , tickTimer_(new QTimer(this))
@@ -56,6 +58,14 @@ GameEngine::GameEngine(QObject *parent)
                 lastLine = msg.section('\n', 0, 0).trimmed();
             }
         }
+        // Strip redundant pybind11 exception type prefix (e.g. "RuntimeError: ")
+        // so the narrow status bar shows the core message.
+        static const QRegularExpression rePrefix(
+            QStringLiteral("^(RuntimeError|TypeError|NameError|ValueError|"
+                           "IndexError|KeyError|AttributeError|ImportError|"
+                           "IndentationError|SyntaxError|StopIteration|"
+                           "ZeroDivisionError|Exception):\\s*"));
+        lastLine.remove(rePrefix);
         emit logMessage(QStringLiteral("脚本错误: %1").arg(lastLine), QStringLiteral("#D94F4F"));
     });
 }
@@ -70,8 +80,18 @@ int GameEngine::timeElapsed() const {
     return static_cast<int>(elapsed / 1000);
 }
 
+int GameEngine::actionTickCount() const {
+    return executor_ ? executor_->actionTickCount() : 0;
+}
+
 int GameEngine::droneX() const { return drone_->x(); }
 int GameEngine::droneY() const { return drone_->y(); }
+
+QStringList GameEngine::star3RequiredFeatures() const {
+    QStringList list = star3RequiredFeatures_.values();
+    list.sort();
+    return list;
+}
 
 void GameEngine::startElapsedTimer() {
     if (elapsedTimerRunning_) {
@@ -109,6 +129,9 @@ void GameEngine::loadLevel(int levelId) {
     currentLevelId_ = levelId;
     currentLevelName_ = cfg.name;
     maxTimeSec_ = cfg.maxTimeSec;
+    star2TickThreshold_ = cfg.star2TickThreshold;
+    star3TickThreshold_ = cfg.star3TickThreshold;
+    star3RequiredFeatures_ = cfg.star3RequiredFeatures;
     currentStartX_ = cfg.droneStartX;
     currentStartY_ = cfg.droneStartY;
     currentBugProbability_ = cfg.bugProbability;
@@ -119,6 +142,7 @@ void GameEngine::loadLevel(int levelId) {
     executor_->setAllowedFunctions(cfg.allowedFunctions);
     executor_->setAllowedSyntax(cfg.allowedSyntax);
     executor_->setAllowedCrops(cfg.allowedCrops);
+    executor_->setAllowedBuiltins(cfg.allowedBuiltins);
     executor_->loadScript(cfg.tutorialCode);
     executor_->resetState();
 
@@ -185,7 +209,6 @@ void GameEngine::reset() {
     tickTimer_->stop();
     executor_->stopScript();
     stopElapsedTimer();
-    accumulatedElapsedMs_ = 0;
     state_ = Idle;
     tickCount_ = 0;
     executor_->resetState();
@@ -216,6 +239,10 @@ void GameEngine::giveUp() {
     emit levelFailed("player_quit");
 }
 
+void GameEngine::overrideBugProbability(float prob) {
+    currentBugProbability_ = prob;
+}
+
 void GameEngine::onTick() {
     tickCount_++;
 
@@ -229,7 +256,9 @@ void GameEngine::onTick() {
         map_->tickUpdate(currentBugProbability_);
     }
     const int elapsedSec = timeElapsed();
+    const int curTick = executor_->actionTickCount();
     goals_->checkAll(elapsedSec);
+    goals_->checkTick(curTick);
     executor_->finishTick();
 
     emit tickExecuted(tickCount_);
@@ -241,9 +270,19 @@ void GameEngine::onTick() {
         tickTimer_->stop();
         stopElapsedTimer();
         goals_->finalizeTimeGoals(elapsedSec);
+        goals_->finalizeTickGoals(curTick);
+        // ★3 特性目标：检查玩家代码是否使用了当关新特性
+        if (!star3RequiredFeatures_.isEmpty()) {
+            const QSet<QString> matched = executor_->codeUsesFeatures(star3RequiredFeatures_);
+            if (!matched.isEmpty()) {
+                goals_->completeFeatureGoal();
+            }
+        }
+        // 星级 = 独立计数（★1必须完成 + ★2/★3各自独立）
+        const int stars = goals_->starsEarned();
         emit stateChanged();
         emit goalsChanged();
-        emit levelCleared(goals_->starsEarned());
+        emit levelCleared(stars);
         return;
     }
 

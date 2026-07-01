@@ -25,6 +25,9 @@ class GameEngine : public QObject {
     Q_PROPERTY(int currentLevelId READ currentLevelId NOTIFY currentLevelChanged)
     Q_PROPERTY(QString currentLevelName READ currentLevelName NOTIFY currentLevelChanged)
     Q_PROPERTY(int maxTimeSec READ maxTimeSec NOTIFY currentLevelChanged)
+    Q_PROPERTY(int star2TickThreshold READ star2TickThreshold NOTIFY currentLevelChanged)
+    Q_PROPERTY(int star3TickThreshold READ star3TickThreshold NOTIFY currentLevelChanged)
+    Q_PROPERTY(QStringList star3RequiredFeatures READ star3RequiredFeatures NOTIFY currentLevelChanged)
 
 public:
     enum State { Idle, Running, Paused, Error };
@@ -35,7 +38,7 @@ public:
 
     State state() const { return state_; }
     int tickCount() const { return tickCount_; }
-    int timeElapsed() const;
+    int actionTickCount() const;    int timeElapsed() const;
     int droneX() const;
     int droneY() const;
     QVariantList goals() const;
@@ -43,6 +46,9 @@ public:
     int currentLevelId() const { return currentLevelId_; }
     QString currentLevelName() const { return currentLevelName_; }
     int maxTimeSec() const { return maxTimeSec_; }
+    int star2TickThreshold() const { return star2TickThreshold_; }
+    int star3TickThreshold() const { return star3TickThreshold_; }
+    QStringList star3RequiredFeatures() const;
 
     FarmMap* farmMap() const { return map_; }
     void setLevelManager(LevelManager *lm) { levelManager_ = lm; }
@@ -55,6 +61,7 @@ public:
     Q_INVOKABLE void reset();
     Q_INVOKABLE void setSpeed(float multiplier);
     Q_INVOKABLE void giveUp();
+    void overrideBugProbability(float prob);   // for calibration/testing
 
 signals:
     void stateChanged();
@@ -94,6 +101,9 @@ private:
     float speedMultiplier_ = 1.0f;
     QString tutorialCode_;
     int maxTimeSec_ = 0;
+    int star2TickThreshold_ = 0;
+    int star3TickThreshold_ = 0;
+    QSet<QString> star3RequiredFeatures_;
     int currentStartX_ = 0;
     int currentStartY_ = 0;
     float currentBugProbability_ = 0.005f;

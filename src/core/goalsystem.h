@@ -14,8 +14,11 @@ public:
     void init(const QList<LevelGoal> &goals);
     void reset();
     void checkAll(int timeElapsed);
+    void checkTick(int tickCount);
     void finalizeTimeGoals(int timeElapsed);
+    void finalizeTickGoals(int tickCount);
     void addHarvestCount(const QString &crop);
+    void completeFeatureGoal();
     bool allRequiredCompleted() const;
     int starsEarned() const;
     Q_INVOKABLE QVariantList goalsModel() const;

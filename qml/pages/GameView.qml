@@ -413,14 +413,37 @@ Rectangle {
             "get_pos": {funcName: "get_pos", name: "get_pos()", desc: "返回坐标元组 (x, y)。x=列，y=行。"},
             "get_current": {funcName: "get_current", name: "get_current()", desc: "返回格子字典: state, crop, water, hasBug, progress, fertilized。state含\"rock\"。"},
             "get_map_size": {funcName: "get_map_size", name: "get_map_size()", desc: "返回地图尺寸元组 (w, h)。"},
-            "get_tick": {funcName: "get_tick", name: "get_tick()", desc: "返回当前已执行的tick数（整数）。"},
+            "get_tick": {funcName: "get_tick", name: "get_tick()", desc: "返回当前已执行的tick数（整数）。可用于计时。"},
             "get_goals": {funcName: "get_goals", name: "get_goals()", desc: "返回目标列表，每项含: description, current, target, completed, starTier。"},
-            "debug": {funcName: "debug", name: "debug()", desc: "在控制台打印当前格详细信息，同时返回格子信息字典。"}
+            "debug": {funcName: "debug", name: "debug()", desc: "在控制台打印当前格详细信息，同时返回格子信息字典。"},
+            "range": {funcName: "range", name: "range(n)", desc: "生成 0..n-1 的整数序列，常与 for 配合。解锁: 关卡3"},
+            "tuple": {funcName: "tuple", name: "tuple()", desc: "元组构造器。也可用 a, b = ... 解包。解锁: 关卡10"},
+            "len": {funcName: "len", name: "len(x)", desc: "返回列表/字典/字符串的长度。解锁: 关卡11"},
+            "enumerate": {funcName: "enumerate", name: "enumerate(xs)", desc: "返回 (下标, 元素) 对，常用于 for 循环。解锁: 关卡11"},
+            "min": {funcName: "min", name: "min(xs)", desc: "返回最小值。解锁: 关卡12"},
+            "max": {funcName: "max", name: "max(xs)", desc: "返回最大值。解锁: 关卡12"},
+            "sum": {funcName: "sum", name: "sum(xs)", desc: "返回总和。解锁: 关卡12"},
+            "dict": {funcName: "dict", name: "dict()", desc: "字典构造器。也可用 {k: v} 字面量。解锁: 关卡13"},
+            "list": {funcName: "list", name: "list(x)", desc: "列表构造器，可将可迭代对象转为列表。解锁: 关卡13"},
+            "sorted": {funcName: "sorted", name: "sorted(xs)", desc: "返回排好序的新列表，可用 key=lambda 指定排序键。解锁: 关卡15"},
+            "zip": {funcName: "zip", name: "zip(a, b)", desc: "将多个序列配对，返回 (a[i], b[i]) 元组。解锁: 关卡15"},
+            "all": {funcName: "all", name: "all(xs)", desc: "全真才返回 True。解锁: 关卡16"},
+            "any": {funcName: "any", name: "any(xs)", desc: "一真即返回 True。解锁: 关卡16"},
+            "round": {funcName: "round", name: "round(x, n)", desc: "四舍五入到 n 位小数。解锁: 关卡16"},
+            "abs": {funcName: "abs", name: "abs(x)", desc: "返回绝对值。解锁: 关卡16"}
         }
         var result = []
         var apis = appVm.allowedApis
         for (var i = 0; i < apis.length; i++) {
             if (docs[apis[i]]) result.push(docs[apis[i]])
+        }
+        // Also include allowed builtins from the active level
+        var lvl = appVm.activeLevel
+        if (lvl && lvl.allowedBuiltins) {
+            for (var j = 0; j < lvl.allowedBuiltins.length; j++) {
+                var b = lvl.allowedBuiltins[j]
+                if (docs[b] && result.indexOf(docs[b]) < 0) result.push(docs[b])
+            }
         }
         return result
     }
