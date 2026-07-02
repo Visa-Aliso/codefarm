@@ -36,7 +36,7 @@ SyntaxHighlighter::SyntaxHighlighter(QObject *parent)
     strRe_.setPattern(R"(("[^"]*"|'[^']*'))");
 
     // range 从关键字列表中移除，归入内置函数类
-    keywords_ = {"if","else","for","while","def","return","break","continue","in","not","and","or","True","False","None"};
+    keywords_ = {"if","elif","else","for","while","def","return","break","continue","in","not","and","or","pass","lambda","True","False","None"};
     for (const auto &kw : keywords_)
         kwRes_.append(QRegularExpression("\\b" + kw + "\\b"));
 

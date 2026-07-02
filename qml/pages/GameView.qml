@@ -265,6 +265,21 @@ Rectangle {
                         width: parent.width; wrapMode: Text.WordWrap
                     }
 
+                    // Learning objectives
+                    Column {
+                        width: parent.width; spacing: 4
+                        visible: level.id && getLearningObjectives(level.id).length > 0
+                        Text { text: "学习目标"; color: Theme.btnGreen; font.family: Theme.fontUI; font.pixelSize: 12; font.weight: Font.Bold }
+                        Repeater {
+                            model: getLearningObjectives(level.id)
+                            Text {
+                                text: "• " + modelData
+                                color: Theme.textDim; font.family: Theme.fontUI; font.pixelSize: 11
+                                width: parent.width; wrapMode: Text.WordWrap
+                            }
+                        }
+                    }
+
                     // Goals section
                     Column {
                         width: parent.width; spacing: 4
@@ -342,25 +357,34 @@ Rectangle {
                         }
                     }
 
-                    // New syntax — styled card
+                    // New syntax — styled cards with explanations
                     Column {
                         width: parent.width; spacing: 6
                         visible: getHintNewContent().newSyntax && getHintNewContent().newSyntax.length > 0
                         Text { text: "本关新语法"; color: Theme.btnGreen; font.family: Theme.fontUI; font.pixelSize: 12; font.weight: Font.Bold }
-                        Rectangle {
-                            width: parent.width; height: syntaxCol.height + 16
-                            radius: 6; color: Qt.rgba(0,0,0,0.25)
-                            border.width: 1; border.color: Qt.rgba(1,1,1,0.06)
-                            Column {
-                                id: syntaxCol
-                                anchors.left: parent.left; anchors.right: parent.right; anchors.margins: 8
-                                anchors.verticalCenter: parent.verticalCenter
-                                spacing: 4
-                                Repeater {
-                                    model: getHintNewContent().newSyntax || []
+                        Repeater {
+                            model: getHintNewContent().newSyntax || []
+                            Rectangle {
+                                width: parent.width; height: synCardCol.height + 12
+                                radius: 6; color: Qt.rgba(0,0,0,0.25)
+                                border.width: 1; border.color: Qt.rgba(1,1,1,0.06)
+                                Column {
+                                    id: synCardCol
+                                    anchors.left: parent.left; anchors.right: parent.right; anchors.margins: 8
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 2
                                     Text {
                                         text: modelData
                                         color: Theme.statusRunning; font.family: Theme.fontCode; font.pixelSize: 12; font.weight: Font.Bold
+                                    }
+                                    Text {
+                                        text: {
+                                            var docs = getSyntaxDocs()
+                                            if (docs[modelData]) return docs[modelData]
+                                            return ""
+                                        }
+                                        color: Theme.textDim; font.family: Theme.fontUI; font.pixelSize: 10
+                                        width: parent.width; wrapMode: Text.WordWrap
                                     }
                                 }
                             }
@@ -397,6 +421,59 @@ Rectangle {
                     Item { width: 1; height: 8 }
                 }
             }
+        }
+    }
+
+    function getLearningObjectives(lvlId) {
+        var obj = {
+            1: ["理解程序从上到下顺序执行","学会使用 # 写注释（机器不执行的说明文字）"],
+            2: ["学会用 = 把值存到变量里","理解 if 条件判断：满足条件才执行"],
+            3: ["学会 for 循环：for i in range(n) 重复 n 次","理解嵌套循环：循环里面套循环"],
+            4: ["学会 while 循环：条件为真就一直重复","学会 get_current() 查询当前格状态","理解用字典键取值: dict['key']"],
+            5: ["学会 def 定义函数，封装重复流程","理解函数参数：def plant_row(crop) 可传入不同作物"],
+            6: ["学会 return 让函数返回计算结果","学会 elif/else 处理多分支判断","学会 not 取反逻辑"],
+            7: ["学会 and/or 组合多个条件","学会 fertilize() 施肥加速生长"],
+            8: ["学会 break 跳出循环、continue 跳过本次","学会 spray() 除虫"],
+            9: ["综合运用所学：大规模种植 + 巡逻管理"],
+            10: ["学会元组解包: a, b = get_pos()","学会 get_tick() 计时"],
+            11: ["学会列表字面量 [a, b, c] 和切片 [1:3]","学会 len() 求长度、enumerate() 带下标遍历"],
+            12: ["学会增强赋值 += -= 累加计数","学会 min/max/sum 统计函数","了解向日葵：不可收割但加速邻居"],
+            13: ["学会字典字面量 {键: 值}","学会 items()/keys()/values() 遍历字典"],
+            14: ["学会列表推导式 [x for x in xs if cond]","学会 get_goals() 查询目标进度"],
+            15: ["学会 zip() 并行遍历两个列表","学会 sorted() 排序"],
+            16: ["学会 all() 全真才真、any() 一真即真","学会嵌套函数（函数里面定义函数）"],
+            17: ["学会 lambda 写匿名小函数","理解闭包：内层函数记住外层变量"],
+            18: ["学会字典推导式 {k: v for ...}","综合运用所有技巧"],
+            19: ["学会生成器表达式 (x for x in xs) 惰性求值","学会集合推导式 {x for x in xs} 去重"],
+            20: ["终极综合：全部 API + 全部语法 + 全部机制","尝试用最优雅的方式写出高效解法"]
+        }
+        return obj[lvlId] || []
+    }
+
+    function getSyntaxDocs() {
+        return {
+            "for": "重复执行一段代码。for i in range(3): 会循环 3 次，i 依次取 0,1,2。",
+            "while": "条件为真时一直重复。while x > 0: move('left') 直到 x 回到 0 才停止。",
+            "if": "条件判断，满足条件才执行后面的缩进代码块。",
+            "else": "与 if 配合，条件不满足时执行的代码块。也可与循环配合（循环正常结束后执行）。",
+            "elif": "else + if 的缩写，用于多分支判断。if...elif...else 依次检查。",
+            "def": "定义函数，把重复流程封装成可复用的代码块。def 函数名(参数): ...",
+            "return": "让函数返回计算结果。return True 或 return 表达式。执行到 return 函数就结束。",
+            "and": "逻辑与：两边都为 True 结果才是 True。c['state'] == 'mature' and c['crop'] != 'sunflower'",
+            "or": "逻辑或：至少一边为 True 结果就是 True。crop == 'carrot' or crop == 'tomato'",
+            "not": "逻辑非：True 变 False，False 变 True。not is_mature() 取反。",
+            "break": "跳出循环。常用于提前结束 for/while 循环。",
+            "continue": "跳过本次循环剩余代码，直接进入下一次迭代。",
+            "assign": "变量赋值。用 = 把值存到变量里：crop = 'wheat' 然后 plant(crop)。",
+            "augassign": "增强赋值。harvested += 1 等价于 harvested = harvested + 1。还有 -= *= /=。",
+            "tuple": "元组：不可修改的序列。(x, y) 或直接写成 x, y。常用于多变量赋值：a, b = get_pos()。",
+            "list": "列表：可修改的序列。[1, 2, 3] 或 list(range(5))。支持切片、append。",
+            "dict": "字典：键值对映射。{'wheat': 6, 'carrot': 14}。用 [键] 取值，items() 遍历。",
+            "listcomp": "列表推导式：一行生成列表。[c for c in crops if c != 'sunflower'] 筛选非向日葵。",
+            "dictcomp": "字典推导式：一行生成字典。{c: 0 for c in crops} 初始化计数器。",
+            "setcomp": "集合推导式：一行去重。{c['crop'] for c in cells if c['crop']}。",
+            "genexp": "生成器表达式：惰性求值。sum(1 for c in cells if c['hasBug']) 统计虫害数。",
+            "lambda": "匿名函数：lambda x: x * 2 一个小函数。常用于 sorted(xs, key=lambda g: g['target'])。"
         }
     }
 

@@ -257,15 +257,11 @@ Item {
                 ctx.fill()
             }
 
-            // Bug indicator
+            // Bug indicator - red tint overlay on infested cells
             if (cell && cell.hasBug) {
-                var cw2 = trx - tlx
-                var ch = bly - tly
-                ctx.fillStyle = "rgba(200,60,60,0.7)"
-                ctx.font = "10px serif"
-                ctx.textAlign = "center"
-                ctx.textBaseline = "middle"
-                ctx.fillText("🐞", tlx + cw2 / 2, tly + ch / 2)
+                traceTrap()
+                ctx.fillStyle = "rgba(45, 35, 30, 0.55)"
+                ctx.fill()
             }
         }
 

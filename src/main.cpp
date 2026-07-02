@@ -43,7 +43,8 @@ bool runSmokeTestCase(GameEngine &engine,
                       const QString &script,
                       int maxSteps,
                       QString &failure,
-                      int &ticksUsedOut) {
+                      int &ticksUsedOut,
+                      bool forceZeroBugs = false) {
     bool cleared = false;
     bool failed = false;
     bool errored = false;
@@ -73,6 +74,7 @@ bool runSmokeTestCase(GameEngine &engine,
             QCoreApplication::instance()->quit();
         });
     engine.loadLevel(levelId);
+    if (forceZeroBugs) engine.overrideBugProbability(0.0f);
     engine.loadScript(script);
     engine.setSpeed(5.0f);  // max speed for smoke test
     engine.run();
@@ -91,7 +93,7 @@ bool runSmokeTestCase(GameEngine &engine,
     // completes/fails.
     QTimer timeoutTimer;
     timeoutTimer.setSingleShot(true);
-    timeoutTimer.setInterval(60000);  // 60s per level at 5x speed
+    timeoutTimer.setInterval(300000);  // 5min safety timeout, game is tick-based
     timeoutTimer.start();
     const QMetaObject::Connection timeoutConn = QObject::connect(
         &timeoutTimer, &QTimer::timeout, &engine, [&]() {
@@ -150,13 +152,9 @@ int runCalibration(int argc, char *argv[]) {
             return 1;
         }
         // Load level, override bugs to 0 for deterministic tick counting
-        engine.loadLevel(id);
-        engine.overrideBugProbability(0.0f);
-        engine.loadScript(cfg.tutorialCode);
-
         int ticks = 0;
         QString failure;
-        if (!runSmokeTestCase(engine, id, cfg.tutorialCode, 0, failure, ticks)) {
+        if (!runSmokeTestCase(engine, id, cfg.tutorialCode, 0, failure, ticks, true)) {
             std::cerr << "  L" << id << " (" << cfg.name.toStdString() << "): FAIL - "
                       << failure.toStdString() << "\n";
             continue;
